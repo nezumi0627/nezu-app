@@ -30,10 +30,54 @@ struct Asset: Codable {
     }
 }
 
+struct AppVersion {
+    let major: Int
+    let minor: Int
+    let patch: Int
+    let build: Int
+    
+    var versionString: String {
+        "\(major).\(minor).\(patch)"
+    }
+    
+    var fullVersionString: String {
+        "\(major).\(minor).\(patch).\(build)"
+    }
+    
+    init?(versionString: String, buildString: String) {
+        let versionComponents = versionString.components(separatedBy: ".").compactMap { Int($0) }
+        guard versionComponents.count >= 2 else { return nil }
+        
+        self.major = versionComponents[0]
+        self.minor = versionComponents.count > 1 ? versionComponents[1] : 0
+        self.patch = versionComponents.count > 2 ? versionComponents[2] : 0
+        self.build = Int(buildString) ?? 0
+    }
+    
+    func compare(to other: AppVersion) -> ComparisonResult {
+        if major != other.major {
+            return major > other.major ? .orderedDescending : .orderedAscending
+        }
+        if minor != other.minor {
+            return minor > other.minor ? .orderedDescending : .orderedAscending
+        }
+        if patch != other.patch {
+            return patch > other.patch ? .orderedDescending : .orderedAscending
+        }
+        if build != other.build {
+            return build > other.build ? .orderedDescending : .orderedAscending
+        }
+        return .orderedSame
+    }
+}
+
 @MainActor
 class VersionManager: ObservableObject {
-    @Published var currentVersion: String = "1.0.1"
+    @Published var currentVersion: AppVersion?
+    @Published var currentVersionString: String = "1.0.0"
+    @Published var currentBuildString: String = "1"
     @Published var latestVersion: String?
+    @Published var latestBuild: Int?
     @Published var updateAvailable: Bool = false
     @Published var downloadUrl: String?
     @Published var isLoading: Bool = false
@@ -46,7 +90,9 @@ class VersionManager: ObservableObject {
         #if os(iOS)
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
-            self.currentVersion = "\(version).\(build)"
+            self.currentVersionString = version
+            self.currentBuildString = build
+            self.currentVersion = AppVersion(versionString: version, buildString: build)
         }
         #endif
     }
@@ -91,44 +137,76 @@ class VersionManager: ObservableObject {
     private func processReleaseData(_ data: Data) {
         do {
             let releases = try JSONDecoder().decode([ReleaseInfo].self, from: data)
-            let draftReleases = releases.filter { $0.draft }
-            let availableReleases = draftReleases.isEmpty ? releases : draftReleases
             
-            guard let latestRelease = availableReleases.first else {
+            // Draftリリースを除外し、publishedリリースのみをチェック
+            let publishedReleases = releases.filter { !$0.draft && $0.publishedAt != nil }
+            
+            guard let latestRelease = publishedReleases.first else {
                 self.errorMessage = "利用可能なリリースが見つかりません"
                 return
             }
             
-            let tagVersion = self.extractVersionFromTag(latestRelease.tagName)
+            // タグ名からバージョン情報を抽出
+            let (versionString, buildNumber) = self.extractVersionFromTag(latestRelease.tagName)
             
             if let ipaAsset = latestRelease.assets.first(where: { $0.name.hasSuffix(".ipa") }) {
-                self.latestVersion = tagVersion
+                self.latestVersion = versionString
+                self.latestBuild = buildNumber
                 self.downloadUrl = ipaAsset.browserDownloadUrl
-                updateCompareLogic(tagVersion: tagVersion)
+                updateCompareLogic(latestVersionString: versionString, latestBuild: buildNumber)
             } else {
                 self.errorMessage = "IPAファイルが見つかりません"
             }
         } catch {
-            self.errorMessage = "データの解析に失敗しました"
+            self.errorMessage = "データの解析に失敗しました: \(error.localizedDescription)"
         }
     }
 
-    private func updateCompareLogic(tagVersion: String) {
-        let currentBuildStr = self.currentVersion.components(separatedBy: ".").last ?? "1"
-        if let currentBuild = Int(currentBuildStr),
-           let latestBuild = Int(tagVersion) {
-            self.updateAvailable = latestBuild > currentBuild
-        } else {
-            self.updateAvailable = tagVersion != self.currentVersion
+    private func updateCompareLogic(latestVersionString: String, latestBuild: Int?) {
+        guard let currentVersion = self.currentVersion else {
+            // 現在のバージョンが取得できない場合は比較しない
+            self.updateAvailable = false
+            return
         }
+        
+        // 最新リリースのバージョンを解析
+        guard let latestVersion = AppVersion(
+            versionString: latestVersionString,
+            buildString: latestBuild.map { String($0) } ?? "0"
+        ) else {
+            // バージョン解析に失敗した場合は比較しない
+            self.updateAvailable = false
+            return
+        }
+        
+        // バージョン比較（最新が現在より新しい場合のみ更新あり）
+        let comparison = currentVersion.compare(to: latestVersion)
+        self.updateAvailable = comparison == .orderedAscending
     }
     
-    private func extractVersionFromTag(_ tag: String) -> String {
-        let components = tag.components(separatedBy: "-")
-        if components.count >= 2 {
-            return components[1]
+    private func extractVersionFromTag(_ tag: String) -> (versionString: String, buildNumber: Int?) {
+        // untagged-{COMMIT_HASH}形式の場合
+        if tag.hasPrefix("untagged-") {
+            // untaggedリリースの場合は、リリース名からバージョンを抽出を試みる
+            // または、ビルド番号のみを使用
+            return (self.currentVersionString, nil)
         }
-        return tag
+        
+        // build-{BUILD_NUMBER}-{COMMIT_HASH}形式の場合
+        let components = tag.components(separatedBy: "-")
+        if components.count >= 2, let buildNumber = Int(components[1]) {
+            // ビルド番号からバージョンを推定（現在のバージョン形式を維持）
+            return (self.currentVersionString, buildNumber)
+        }
+        
+        // v{MAJOR}.{MINOR}.{PATCH}形式の場合
+        if tag.hasPrefix("v") {
+            let versionString = String(tag.dropFirst())
+            return (versionString, nil)
+        }
+        
+        // その他の形式
+        return (tag, nil)
     }
     
     func downloadIPA() {

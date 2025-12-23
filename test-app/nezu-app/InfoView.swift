@@ -26,7 +26,7 @@ struct InfoView: View {
                             .clipShape(Circle())
                             .overlay(Circle().stroke(.ultraThinMaterial, lineWidth: 2))
                             
-                            Text("ねずみ")
+                            Text("nezumi")
                                 .font(.system(size: 22, weight: .semibold))
                                 .foregroundStyle(.primary)
                             
@@ -34,20 +34,29 @@ struct InfoView: View {
                                 .font(.system(size: 13, weight: .regular))
                                 .foregroundStyle(.secondary)
                             
-                            Text("高校生開発者 / iOS Engineer")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 6)
-                                .glassEffect(in: Capsule())
+                            VStack(spacing: 4) {
+                                Text("Developer")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                Text("Web Analyst")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                Text("Python Enthusiast")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .glassEffect(in: Capsule())
                         }
                         .padding(.top, 40)
                         
                         // Info cards
                         VStack(spacing: 12) {
-                            InfoCard(title: "Location", value: "Fukuoka, Japan", icon: "location")
-                            InfoCard(title: "Languages", value: "Swift, TypeScript, Python", icon: "code")
-                            InfoCard(title: "Interests", value: "IPA Injection, UI/UX", icon: "sparkles")
+                            InfoCard(title: "Birthday", value: "2008年6月27日", icon: "calendar")
+                            InfoCard(title: "Location", value: "福岡県北九州市", icon: "location")
+                            InfoCard(title: "Languages", value: "日本語と英語", icon: "globe")
+                            InfoCard(title: "Skills", value: "Swift, TypeScript, Python", icon: "code")
                         }
                         .padding(.horizontal, 20)
                         

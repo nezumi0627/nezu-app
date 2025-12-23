@@ -38,7 +38,7 @@ struct ContentView: View {
                         VStack(spacing: 12) {
                             ActionButton(
                                 title: "Check for Updates",
-                                subtitle: "v\(versionManager.currentVersion)",
+                                subtitle: "v\(versionManager.currentVersionString) (\(versionManager.currentBuildString))",
                                 icon: "arrow.up.circle",
                                 action: { showUpdateView = true }
                             )
@@ -70,7 +70,19 @@ struct ContentView: View {
                             Divider()
                             
                             StatusRow(label: "Bundle ID", value: Bundle.main.bundleIdentifier ?? "com.nezu.app")
-                            StatusRow(label: "Version", value: versionManager.currentVersion)
+                            StatusRow(label: "Version", value: versionManager.currentVersionString)
+                            StatusRow(label: "Build", value: versionManager.currentBuildString)
+                            
+                            #if os(iOS)
+                            if let systemVersion = UIDevice.current.systemVersion {
+                                StatusRow(label: "iOS Version", value: systemVersion)
+                            }
+                            StatusRow(label: "Device", value: UIDevice.current.model)
+                            #endif
+                            
+                            if let fullVersion = versionManager.currentVersion?.fullVersionString {
+                                StatusRow(label: "Full Version", value: fullVersion)
+                            }
                         }
                         .padding(16)
                         .glassEffect(in: RoundedRectangle(cornerRadius: 12))
@@ -148,23 +160,78 @@ struct StatusRow: View {
 // MARK: - Background
 
 struct LiquidBackground: View {
-    @State private var animate = false
+    @State private var animate1 = false
+    @State private var animate2 = false
+    @State private var animate3 = false
     
     var body: some View {
         ZStack {
+            // 第1層: 大きな青いグラデーション
             Circle()
-                .fill(Color.blue.opacity(0.15))
-                .frame(width: 300, height: 300)
-                .offset(x: animate ? 50 : -50, y: animate ? -100 : -150)
-            Circle()
-                .fill(Color.purple.opacity(0.1))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.blue.opacity(0.2),
+                            Color.cyan.opacity(0.15)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .frame(width: 400, height: 400)
-                .offset(x: animate ? -75 : 90, y: animate ? 100 : 150)
+                .offset(x: animate1 ? 80 : -80, y: animate1 ? -120 : -180)
+                .blur(radius: 80)
+            
+            // 第2層: 紫のグラデーション
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.purple.opacity(0.18),
+                            Color.pink.opacity(0.12)
+                        ],
+                        center: .center,
+                        startRadius: 50,
+                        endRadius: 200
+                    )
+                )
+                .frame(width: 350, height: 350)
+                .offset(x: animate2 ? -100 : 120, y: animate2 ? 140 : 180)
+                .blur(radius: 70)
+            
+            // 第3層: 小さなアクセント
+            Circle()
+                .fill(
+                    AngularGradient(
+                        colors: [
+                            Color.indigo.opacity(0.15),
+                            Color.blue.opacity(0.1),
+                            Color.cyan.opacity(0.12)
+                        ],
+                        center: .center,
+                        angle: .degrees(45)
+                    )
+                )
+                .frame(width: 250, height: 250)
+                .offset(x: animate3 ? 60 : -60, y: animate3 ? -80 : 100)
+                .blur(radius: 50)
         }
-        .blur(radius: 60)
         .onAppear {
-            withAnimation(.easeInOut(duration: 20).repeatForever(autoreverses: true)) {
-                animate.toggle()
+            // 各アニメーションを異なる速度で開始
+            withAnimation(.easeInOut(duration: 25).repeatForever(autoreverses: true)) {
+                animate1.toggle()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                withAnimation(.easeInOut(duration: 30).repeatForever(autoreverses: true)) {
+                    animate2.toggle()
+                }
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation(.easeInOut(duration: 20).repeatForever(autoreverses: true)) {
+                    animate3.toggle()
+                }
             }
         }
     }
@@ -175,14 +242,72 @@ struct LiquidBackground: View {
 extension View {
     @ViewBuilder
     func glassEffect<S: Shape>(in shape: S) -> some View {
-        // iOS 18.0の.glassはShapeStyleとして使えるが、iOS 17.0との互換性のため
-        // .ultraThinMaterialを使用
-        self.background(.ultraThinMaterial, in: shape)
+        if #available(iOS 18.0, *) {
+            // iOS 18.0+: Material.glassを直接使用
+            self.background(
+                Material.glass,
+                in: shape
+            )
             .overlay(
                 shape
-                    .stroke(.white.opacity(0.2), lineWidth: 0.5)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                .white.opacity(0.3),
+                                .white.opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.5
+                    )
                     .blendMode(.overlay)
             )
+            .shadow(
+                color: .black.opacity(0.1),
+                radius: 8,
+                x: 0,
+                y: 4
+            )
+        } else {
+            // iOS 17.0: .ultraThinMaterialを使用してglass効果を再現
+            self.background(.ultraThinMaterial, in: shape)
+                .overlay(
+                    shape
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    .white.opacity(0.25),
+                                    .white.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.5
+                        )
+                        .blendMode(.overlay)
+                )
+                .overlay(
+                    shape
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    .white.opacity(0.1),
+                                    .clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .blendMode(.overlay)
+                )
+                .shadow(
+                    color: .black.opacity(0.08),
+                    radius: 6,
+                    x: 0,
+                    y: 3
+                )
+        }
     }
 }
 

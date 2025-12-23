@@ -39,7 +39,7 @@ struct UpdateCheckView: View {
                             } else if versionManager.updateAvailable {
                                 UpdateAvailableView(versionManager: versionManager)
                             } else {
-                                UpToDateView(version: versionManager.currentVersion)
+                                UpToDateView(versionManager: versionManager)
                             }
                         }
                         .padding(.horizontal, 20)
@@ -105,20 +105,34 @@ struct UpdateAvailableView: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
             
-            Text(versionManager.latestVersion ?? "Unknown")
-                .font(.system(size: 32, weight: .semibold))
-                .foregroundStyle(.primary)
-            
-            Button(action: { versionManager.downloadIPA() }) {
-                HStack {
-                    Image(systemName: "arrow.down.circle")
-                    Text("Download")
+            VStack(spacing: 4) {
+                Text(versionManager.latestVersion ?? "Unknown")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(.primary)
+                
+                if let build = versionManager.latestBuild {
+                    Text("Build \(build)")
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundStyle(.secondary)
                 }
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 10)
-                .background(.blue, in: Capsule())
+            }
+            
+            VStack(spacing: 8) {
+                Text("Current: v\(versionManager.currentVersionString) (\(versionManager.currentBuildString))")
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundStyle(.tertiary)
+                
+                Button(action: { versionManager.downloadIPA() }) {
+                    HStack {
+                        Image(systemName: "arrow.down.circle")
+                        Text("Download")
+                    }
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
+                    .background(.blue, in: Capsule())
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -128,7 +142,7 @@ struct UpdateAvailableView: View {
 }
 
 struct UpToDateView: View {
-    let version: String
+    @ObservedObject var versionManager: VersionManager
     
     var body: some View {
         VStack(spacing: 12) {
@@ -140,9 +154,14 @@ struct UpToDateView: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(.primary)
             
-            Text("v\(version)")
-                .font(.system(size: 13, weight: .regular))
-                .foregroundStyle(.secondary)
+            VStack(spacing: 4) {
+                Text("v\(versionManager.currentVersionString)")
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(.secondary)
+                Text("Build \(versionManager.currentBuildString)")
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundStyle(.tertiary)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
