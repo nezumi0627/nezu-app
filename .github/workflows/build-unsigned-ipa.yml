@@ -14,35 +14,65 @@ jobs:
       contents: write  # Releaseを作成するために必要
 
     steps:
-      - name: Checkout
+      # ============================================================================
+      # Setup & Preparation
+      # ============================================================================
+
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 全履歴を取得（コミット一覧用）
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app
+          echo "Xcode path: $(xcode-select -p)" | tee -a workflow.log
 
       - name: Show Xcode version
-        run: xcodebuild -version
+        run: |
+          echo "=== Xcode Version ===" | tee -a workflow.log
+          xcodebuild -version | tee -a workflow.log
+
+      - name: Set build start time
+        run: |
+          BUILD_START=$(date -u +%s)
+          echo "BUILD_START=$BUILD_START" >> $GITHUB_ENV
+          echo "Build started at: $(date -u)" | tee -a workflow.log
+
+      # ============================================================================
+      # Project Discovery
+      # ============================================================================
 
       - name: List available schemes
         run: |
           cd test-app || exit 1
+          echo "=== Available Schemes ===" | tee -a ../workflow.log
           if [ -f "*.xcworkspace" ]; then
-            xcodebuild -list -workspace *.xcworkspace || true
+            xcodebuild -list -workspace *.xcworkspace | tee -a ../workflow.log || true
           elif [ -d "nezu-app.xcodeproj" ]; then
-            xcodebuild -list -project nezu-app.xcodeproj || true
+            xcodebuild -list -project nezu-app.xcodeproj | tee -a ../workflow.log || true
           else
-            echo "No Xcode project found"
-            ls -la
+            echo "No Xcode project found" | tee -a ../workflow.log
+            ls -la | tee -a ../workflow.log
           fi
+
+      # ============================================================================
+      # Build Process
+      # ============================================================================
 
       - name: Build (unsigned)
         run: |
-          # nezu-appプロジェクトをビルド
           cd test-app || exit 1
+          echo "=== Starting Build ===" | tee -a ../workflow.log
+          echo "Timestamp: $(date -u)" | tee -a ../workflow.log
+          
           # プロジェクトファイルを検索
           if [ -f *.xcworkspace ]; then
             WORKSPACE=$(ls *.xcworkspace | head -n 1)
             SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" | grep -A 1 "Schemes:" | tail -n 1 | xargs)
+            echo "Using workspace: $WORKSPACE" | tee -a ../workflow.log
+            echo "Using scheme: $SCHEME" | tee -a ../workflow.log
+            
             xcodebuild \
               -workspace "$WORKSPACE" \
               -scheme "$SCHEME" \
@@ -53,10 +83,20 @@ jobs:
               CODE_SIGN_IDENTITY="" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ENTITLEMENTS="" \
-              build
+              build 2>&1 | tee ../build.log
+            
+            BUILD_EXIT_CODE=${PIPESTATUS[0]}
+            if [ $BUILD_EXIT_CODE -ne 0 ]; then
+              echo "Build failed with exit code: $BUILD_EXIT_CODE" | tee -a ../workflow.log
+              exit $BUILD_EXIT_CODE
+            fi
+            
           elif [ -d nezu-app.xcodeproj ]; then
             PROJECT="nezu-app.xcodeproj"
             SCHEME=$(xcodebuild -list -project "$PROJECT" | grep -A 1 "Schemes:" | tail -n 1 | xargs)
+            echo "Using project: $PROJECT" | tee -a ../workflow.log
+            echo "Using scheme: $SCHEME" | tee -a ../workflow.log
+            
             xcodebuild \
               -project "$PROJECT" \
               -scheme "$SCHEME" \
@@ -67,30 +107,44 @@ jobs:
               CODE_SIGN_IDENTITY="" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ENTITLEMENTS="" \
-              build
+              build 2>&1 | tee ../build.log
+            
+            BUILD_EXIT_CODE=${PIPESTATUS[0]}
+            if [ $BUILD_EXIT_CODE -ne 0 ]; then
+              echo "Build failed with exit code: $BUILD_EXIT_CODE" | tee -a ../workflow.log
+              exit $BUILD_EXIT_CODE
+            fi
           else
-            echo "Error: No Xcode project or workspace found"
-            ls -la
+            echo "Error: No Xcode project or workspace found" | tee -a ../workflow.log
+            ls -la | tee -a ../workflow.log
             exit 1
           fi
+          
+          echo "=== Build Completed Successfully ===" | tee -a ../workflow.log
+          echo "Timestamp: $(date -u)" | tee -a ../workflow.log
+
+      # ============================================================================
+      # App Discovery & IPA Creation
+      # ============================================================================
 
       - name: Find built app
         id: find_app
         run: |
-          # 作業ディレクトリをルートに戻す
           cd ${{ github.workspace }}
+          echo "=== Searching for .app file ===" | tee -a workflow.log
           
           # DerivedDataから.appファイルを検索
           APP_PATH=$(find ./DerivedData -name "*.app" -type d | grep -i "Release-iphoneos" | head -n 1)
           if [ -z "$APP_PATH" ]; then
             APP_PATH=$(find ./DerivedData -name "*.app" -type d | head -n 1)
           fi
+          
           if [ -z "$APP_PATH" ]; then
-            echo "Error: .app file not found"
-            echo "Searching in DerivedData:"
-            find ./DerivedData -type d -name "*.app" || true
-            echo "DerivedData contents:"
-            ls -la ./DerivedData || true
+            echo "Error: .app file not found" | tee -a workflow.log
+            echo "Searching in DerivedData:" | tee -a workflow.log
+            find ./DerivedData -type d -name "*.app" | tee -a workflow.log || true
+            echo "DerivedData contents:" | tee -a workflow.log
+            ls -la ./DerivedData | tee -a workflow.log || true
             exit 1
           fi
           
@@ -98,137 +152,325 @@ jobs:
           APP_PATH=$(cd "$(dirname "$APP_PATH")" && pwd)/$(basename "$APP_PATH")
           
           echo "APP_PATH=$APP_PATH" >> $GITHUB_OUTPUT
-          echo "Found app at: $APP_PATH"
-          ls -la "$APP_PATH"
+          echo "Found app at: $APP_PATH" | tee -a workflow.log
+          ls -la "$APP_PATH" | tee -a workflow.log
 
       - name: Extract app name
         id: app_name
         run: |
           APP_NAME=$(basename "${{ steps.find_app.outputs.APP_PATH }}" .app)
           echo "APP_NAME=$APP_NAME" >> $GITHUB_OUTPUT
-          echo "App name: $APP_NAME"
+          echo "App name: $APP_NAME" | tee -a workflow.log
 
       - name: Create IPA
         run: |
-          # 作業ディレクトリをルートに戻す
           cd ${{ github.workspace }}
+          echo "=== IPA Creation Process ===" | tee -a workflow.log
+          echo "Timestamp: $(date -u)" | tee -a workflow.log
           
           # 一時ディレクトリを作成
           TEMP_DIR=$(mktemp -d)
-          echo "Temporary directory: $TEMP_DIR"
+          echo "Temporary directory: $TEMP_DIR" | tee -a workflow.log
           
           # Payloadフォルダを作成
           mkdir -p "$TEMP_DIR/Payload"
           
           # .appファイルをPayloadフォルダにコピー
           APP_NAME=$(basename "${{ steps.find_app.outputs.APP_PATH }}")
-          cp -R "${{ steps.find_app.outputs.APP_PATH }}" "$TEMP_DIR/Payload/"
+          echo "Copying .app to Payload..." | tee -a workflow.log
+          cp -R "${{ steps.find_app.outputs.APP_PATH }}" "$TEMP_DIR/Payload/" 2>&1 | tee -a ipa-creation.log
           
           # コピーが成功したか確認
           if [ ! -d "$TEMP_DIR/Payload/$APP_NAME" ]; then
-            echo "Error: Failed to copy .app to Payload"
-            echo "Source: ${{ steps.find_app.outputs.APP_PATH }}"
-            echo "Destination: $TEMP_DIR/Payload/$APP_NAME"
-            ls -la "$TEMP_DIR/Payload/" || true
+            echo "Error: Failed to copy .app to Payload" | tee -a workflow.log
+            echo "Source: ${{ steps.find_app.outputs.APP_PATH }}" | tee -a workflow.log
+            echo "Destination: $TEMP_DIR/Payload/$APP_NAME" | tee -a workflow.log
+            ls -la "$TEMP_DIR/Payload/" | tee -a workflow.log || true
             exit 1
           fi
           
-          echo "Payload structure:"
-          ls -la "$TEMP_DIR/Payload/"
-          echo "App contents:"
-          ls -la "$TEMP_DIR/Payload/$APP_NAME/" | head -10
+          echo "Payload structure:" | tee -a ipa-creation.log
+          ls -la "$TEMP_DIR/Payload/" | tee -a ipa-creation.log
+          echo "App contents:" | tee -a ipa-creation.log
+          ls -la "$TEMP_DIR/Payload/$APP_NAME/" | head -10 | tee -a ipa-creation.log
           
           # IPAファイル名を設定（一意になるようにビルド番号とコミットハッシュを含める）
-          # run_numberは常に増加するので被らない、short_shaでコミットを識別
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           IPA_NAME="${{ steps.app_name.outputs.APP_NAME }}-unsigned-build${{ github.run_number }}-${SHORT_SHA}.ipa"
           IPA_PATH="${{ github.workspace }}/$IPA_NAME"
+          
+          echo "IPA name: $IPA_NAME" | tee -a workflow.log
+          echo "IPA path: $IPA_PATH" | tee -a workflow.log
           
           # 既存のIPAファイルがあれば削除
           rm -f "$IPA_PATH"
           
           # Payloadフォルダを含めてzipファイルを作成
-          # 重要: Payloadフォルダの親ディレクトリから実行し、Payloadフォルダ自体を含める
+          echo "Creating IPA archive..." | tee -a ipa-creation.log
           cd "$TEMP_DIR"
-          zip -r "$IPA_PATH" Payload -x "*.DS_Store" "*.git*" "*.swp" "*.swo"
+          zip -r "$IPA_PATH" Payload -x "*.DS_Store" "*.git*" "*.swp" "*.swo" 2>&1 | tee -a ipa-creation.log
           
           # 作業ディレクトリを戻す
           cd ${{ github.workspace }}
           
           # IPAファイルが作成されたか確認
           if [ ! -f "$IPA_PATH" ]; then
-            echo "Error: Failed to create IPA file"
+            echo "Error: Failed to create IPA file" | tee -a workflow.log
             exit 1
           fi
           
-          # IPAファイルの内容を詳細に確認
-          echo "IPA file created: $IPA_PATH"
-          ls -lh "$IPA_PATH"
-          echo ""
-          echo "=== IPA file structure verification ==="
-          echo "First 30 lines of IPA contents:"
-          unzip -l "$IPA_PATH" | head -30
-          echo ""
-          echo "Checking for Payload folder:"
-          if unzip -l "$IPA_PATH" | grep -q "^.*Payload/"; then
-            echo "✓ Payload folder found in IPA"
-          else
-            echo "✗ ERROR: Payload folder NOT found in IPA"
-            echo "Full contents:"
-            unzip -l "$IPA_PATH"
-            exit 1
-          fi
-          echo ""
-          echo "Checking for .app in Payload:"
-          if unzip -l "$IPA_PATH" | grep -q "^.*Payload/.*\.app/"; then
-            echo "✓ .app found in Payload folder"
-          else
-            echo "✗ ERROR: .app NOT found in Payload folder"
-            exit 1
-          fi
+          echo "IPA file created successfully" | tee -a workflow.log
+          ls -lh "$IPA_PATH" | tee -a ipa-creation.log
           
           # 一時ディレクトリをクリーンアップ
           rm -rf "$TEMP_DIR"
           
           echo "IPA_NAME=$IPA_NAME" >> $GITHUB_ENV
 
+      # ============================================================================
+      # IPA Verification
+      # ============================================================================
+
       - name: Verify IPA file before upload
         id: verify_ipa
         run: |
           cd ${{ github.workspace }}
+          echo "=== IPA Verification ===" | tee -a workflow.log
+          
           if [ ! -f "${{ env.IPA_NAME }}" ]; then
-            echo "Error: IPA file not found: ${{ env.IPA_NAME }}"
-            echo "Current directory: $(pwd)"
-            echo "Files in workspace:"
-            ls -la || true
-            echo "IPA files:"
-            ls -la *.ipa || true
+            echo "Error: IPA file not found: ${{ env.IPA_NAME }}" | tee -a workflow.log
+            echo "Current directory: $(pwd)" | tee -a workflow.log
+            echo "Files in workspace:" | tee -a workflow.log
+            ls -la | tee -a workflow.log || true
+            echo "IPA files:" | tee -a workflow.log
+            ls -la *.ipa | tee -a workflow.log || true
             exit 1
           fi
-          echo "IPA file ready: ${{ env.IPA_NAME }}"
-          ls -lh "${{ env.IPA_NAME }}"
+          
+          echo "IPA file ready: ${{ env.IPA_NAME }}" | tee -a workflow.log
+          ls -lh "${{ env.IPA_NAME }}" | tee -a verification.log
+          echo "" | tee -a verification.log
+          
+          echo "=== IPA file structure verification ===" | tee -a verification.log
+          echo "First 30 lines of IPA contents:" | tee -a verification.log
+          unzip -l "${{ env.IPA_NAME }}" | head -30 | tee -a verification.log
+          echo "" | tee -a verification.log
+          
+          echo "Checking for Payload folder:" | tee -a verification.log
+          if unzip -l "${{ env.IPA_NAME }}" | grep -q "^.*Payload/"; then
+            echo "✓ Payload folder found in IPA" | tee -a verification.log
+          else
+            echo "✗ ERROR: Payload folder NOT found in IPA" | tee -a verification.log
+            echo "Full contents:" | tee -a verification.log
+            unzip -l "${{ env.IPA_NAME }}" | tee -a verification.log
+            exit 1
+          fi
+          
+          echo "" | tee -a verification.log
+          echo "Checking for .app in Payload:" | tee -a verification.log
+          if unzip -l "${{ env.IPA_NAME }}" | grep -q "^.*Payload/.*\.app/"; then
+            echo "✓ .app found in Payload folder" | tee -a verification.log
+          else
+            echo "✗ ERROR: .app NOT found in Payload folder" | tee -a verification.log
+            exit 1
+          fi
+          
           echo "IPA_FILE_PATH=${{ github.workspace }}/${{ env.IPA_NAME }}" >> $GITHUB_OUTPUT
+
+      # ============================================================================
+      # Metadata Generation
+      # ============================================================================
+
+      - name: Generate release body and metadata
+        id: generate_metadata
+        run: |
+          cd ${{ github.workspace }}
+          echo "=== Generating Metadata ===" | tee -a workflow.log
+          
+          IPA_FILE="${{ github.workspace }}/${{ env.IPA_NAME }}"
+
+          # IPAサイズ・ハッシュ
+          echo "Calculating IPA checksum..." | tee -a workflow.log
+          IPA_SIZE_BYTES=$(stat -f%z "$IPA_FILE")
+          IPA_SIZE_HUMAN=$(du -h "$IPA_FILE" | cut -f1)
+          IPA_SHA256=$(shasum -a 256 "$IPA_FILE" | awk '{print $1}')
+          
+          echo "IPA Size: $IPA_SIZE_HUMAN ($IPA_SIZE_BYTES bytes)" | tee -a workflow.log
+          echo "IPA SHA256: $IPA_SHA256" | tee -a workflow.log
+
+          # Runner / イメージ情報
+          RUNNER_OS="${RUNNER_OS}"
+          RUNNER_ARCH="${RUNNER_ARCH:-unknown}"
+          IMAGE_OS="${ImageOS:-unknown}"
+          IMAGE_VERSION="${ImageVersion:-unknown}"
+
+          # Runnerの詳細情報をファイルに出力（後でアーティファクトとして保存）
+          {
+            echo "=== Runner Basic Info ==="
+            echo "RUNNER_OS=$RUNNER_OS"
+            echo "RUNNER_ARCH=$RUNNER_ARCH"
+            echo "ImageOS=$IMAGE_OS"
+            echo "ImageVersion=$IMAGE_VERSION"
+            echo
+            echo "=== uname -a ==="
+            uname -a || true
+            echo
+            echo "=== sw_vers ==="
+            sw_vers || true
+          } > runner-system-info.txt
+
+          {
+            echo "=== Environment Variables (sorted) ==="
+            env | sort
+          } > runner-env.txt
+
+          {
+            echo "=== Xcode / SDK Info ==="
+            xcodebuild -version || true
+            echo
+            echo "=== Available SDKs ==="
+            xcodebuild -showsdks || true
+          } > runner-xcode-info.txt
+
+          # ビルド時間計算
+          END_TS=$(date -u +%s)
+          DURATION_SEC=$((END_TS - BUILD_START))
+          H=$((DURATION_SEC / 3600))
+          M=$(((DURATION_SEC % 3600) / 60))
+          S=$((DURATION_SEC % 60))
+          BUILD_DURATION=$(printf "%02d:%02d:%02d" "$H" "$M" "$S")
+          echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
+          echo "Build duration: $BUILD_DURATION ($DURATION_SEC seconds)" | tee -a workflow.log
+
+          # コミット一覧（最新10件）
+          echo "Generating commit list..." | tee -a workflow.log
+          git log -10 --pretty=format:'- `%h` %ad **%an**: %s' --date=short > commit-list.md
+
+          TAG_NAME="build-${{ github.run_number }}-${{ github.sha }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
+
+          cat > release-body.md << 'EOF'
+          ## Unsigned IPA Build
+
+          - **Commit**: `${{ github.sha }}`
+          - **Branch**: `${{ github.ref_name }}`
+          - **Workflow**: `${{ github.workflow }}`
+          - **Run**: #${{ github.run_number }}
+          - **Build Duration (hh:mm:ss)**: __BUILD_DURATION__
+          - **IPA File**: `${{ env.IPA_NAME }}`
+          - **IPA Size**: __IPA_SIZE_HUMAN__ (__IPA_SIZE_BYTES__ bytes)
+          - **IPA SHA256**: `__IPA_SHA256__`
+
+          ### Runner / Environment
+
+          - **Runner OS**: __RUNNER_OS__ (__RUNNER_ARCH__)
+          - **Image OS**: __IMAGE_OS__
+          - **Image Version**: __IMAGE_VERSION__
+
+          - **Release URL**: [GitHub Release](__RELEASE_URL__)
+
+          ### Commits included in this build (latest 10)
+
+          __COMMITS__
+
+          ### ダウンロード方法
+
+          1. 下の「Assets」セクションから `.ipa` ファイルをダウンロード
+          2. SideStoreでインストール可能
+
+          **注意**: このIPAは署名無しです。SideStoreで署名してからインストールしてください。
+          EOF
+
+          COMMITS_CONTENT=$(cat commit-list.md)
+
+          perl -pi -e "s#__BUILD_DURATION__#$BUILD_DURATION#g" release-body.md
+          perl -pi -e "s#__IPA_SIZE_HUMAN__#$IPA_SIZE_HUMAN#g" release-body.md
+          perl -pi -e "s#__IPA_SIZE_BYTES__#$IPA_SIZE_BYTES#g" release-body.md
+          perl -pi -e "s#__IPA_SHA256__#$IPA_SHA256#g" release-body.md
+          perl -pi -e "s#__RUNNER_OS__#$RUNNER_OS#g" release-body.md
+          perl -pi -e "s#__RUNNER_ARCH__#$RUNNER_ARCH#g" release-body.md
+          perl -pi -e "s#__IMAGE_OS__#$IMAGE_OS#g" release-body.md
+          perl -pi -e "s#__IMAGE_VERSION__#$IMAGE_VERSION#g" release-body.md
+          perl -pi -e "s#__RELEASE_URL__#$RELEASE_URL#g" release-body.md
+          perl -0pi -e 's#__COMMITS__#'"$COMMITS_CONTENT"'#g' release-body.md
+
+          cat > build-metadata.json <<EOF2
+          {
+            "ipa_name": "${{ env.IPA_NAME }}",
+            "ipa_size_bytes": $IPA_SIZE_BYTES,
+            "ipa_sha256": "$IPA_SHA256",
+            "build_duration_seconds": $DURATION_SEC,
+            "build_duration_hms": "$BUILD_DURATION",
+            "runner": {
+              "os": "$RUNNER_OS",
+              "arch": "$RUNNER_ARCH",
+              "image_os": "$IMAGE_OS",
+              "image_version": "$IMAGE_VERSION"
+            },
+            "tag_name": "$TAG_NAME",
+            "release_url": "$RELEASE_URL",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}"
+          }
+          EOF2
+
+          echo "Metadata generation completed" | tee -a workflow.log
+
+      # ============================================================================
+      # Artifact Upload
+      # ============================================================================
+
+      - name: Upload build metadata artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-ipa-build-metadata
+          path: |
+            release-body.md
+            build-metadata.json
+            commit-list.md
+            runner-system-info.txt
+            runner-env.txt
+            runner-xcode-info.txt
+          retention-days: 30
+
+      - name: Upload debug logs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-ipa-debug-logs
+          path: |
+            workflow.log
+            build.log
+            ipa-creation.log
+            verification.log
+          retention-days: 30
+          if-no-files-found: warn
+
+      # ============================================================================
+      # Release Creation
+      # ============================================================================
 
       - name: Create Draft Release and Upload IPA
         id: create_release
         continue-on-error: false
         run: |
           cd ${{ github.workspace }}
-          echo "=== Release Creation Debug Info ==="
-          echo "IPA file name: ${{ env.IPA_NAME }}"
-          echo "IPA file path: ${{ github.workspace }}/${{ env.IPA_NAME }}"
-          echo "Current directory: $(pwd)"
-          echo "Files in workspace:"
-          ls -la || true
-          echo "IPA files:"
-          ls -lh *.ipa || true
-          echo ""
+          echo "=== Release Creation Debug Info ===" | tee -a workflow.log
+          echo "IPA file name: ${{ env.IPA_NAME }}" | tee -a workflow.log
+          echo "IPA file path: ${{ github.workspace }}/${{ env.IPA_NAME }}" | tee -a workflow.log
+          echo "Current directory: $(pwd)" | tee -a workflow.log
+          echo "Files in workspace:" | tee -a workflow.log
+          ls -la | tee -a workflow.log || true
+          echo "IPA files:" | tee -a workflow.log
+          ls -lh *.ipa | tee -a workflow.log || true
+          echo "" | tee -a workflow.log
+          
           if [ ! -f "${{ env.IPA_NAME }}" ]; then
-            echo "ERROR: IPA file not found!"
+            echo "ERROR: IPA file not found!" | tee -a workflow.log
             exit 1
           fi
-          echo "IPA file exists and is ready for upload"
-          ls -lh "${{ env.IPA_NAME }}"
+          
+          echo "IPA file exists and is ready for upload" | tee -a workflow.log
+          ls -lh "${{ env.IPA_NAME }}" | tee -a workflow.log
         env:
           IPA_NAME: ${{ env.IPA_NAME }}
 
@@ -237,26 +479,16 @@ jobs:
         with:
           tag_name: "build-${{ github.run_number }}-${{ github.sha }}"
           name: "Build #${{ github.run_number }} - ${{ github.sha }}"
-          body: |
-            ## Unsigned IPA Build
-            
-            - **Commit**: ${{ github.sha }}
-            - **Branch**: ${{ github.ref_name }}
-            - **Workflow**: ${{ github.workflow }}
-            - **Run**: #${{ github.run_number }}
-            - **IPA File**: ${{ env.IPA_NAME }}
-            
-            ### ダウンロード方法
-            
-            1. 下の「Assets」セクションから `.ipa` ファイルをダウンロード
-            2. SideStoreでインストール可能
-            
-            **注意**: このIPAは署名無しです。SideStoreで署名してからインストールしてください。
+          body_path: release-body.md
           draft: true
           prerelease: false
           files: |
             ${{ env.IPA_NAME }}
           fail_on_unmatched_files: true
+
+      # ============================================================================
+      # Backup Artifact
+      # ============================================================================
 
       - name: Upload IPA as Artifact (backup)
         if: always() && env.IPA_NAME != ''
@@ -266,4 +498,3 @@ jobs:
           path: ${{ github.workspace }}/${{ env.IPA_NAME }}
           retention-days: 30
           if-no-files-found: warn
-
