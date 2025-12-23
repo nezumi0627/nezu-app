@@ -1,12 +1,8 @@
-//
-//  VersionManager.swift
-//  test-app
-//
-//  Created by GitHub Actions
-//
-
 import Foundation
+import Combine
+#if os(iOS)
 import UIKit
+#endif
 
 struct ReleaseInfo: Codable {
     let tagName: String
@@ -34,35 +30,32 @@ struct Asset: Codable {
     }
 }
 
+@MainActor
 class VersionManager: ObservableObject {
-    @Published var currentVersion: String
+    @Published var currentVersion: String = "1.0.1"
     @Published var latestVersion: String?
     @Published var updateAvailable: Bool = false
     @Published var downloadUrl: String?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    // GitHub Releasesを確認するリポジトリ
     private let githubRepo = "nezumi0627/nezu-app"
     private let apiBaseUrl = "https://api.github.com/repos"
     
     init() {
-        // 現在のバージョンを取得
+        #if os(iOS)
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
             self.currentVersion = "\(version).\(build)"
-        } else {
-            self.currentVersion = "1.0.1"
         }
+        #endif
     }
     
     func checkForUpdates() {
         isLoading = true
         errorMessage = nil
         
-        // GitHub Releases APIから最新のDraft Releaseを取得
         let urlString = "\(apiBaseUrl)/\(githubRepo)/releases"
-        
         guard let url = URL(string: urlString) else {
             errorMessage = "無効なURLです"
             isLoading = false
@@ -73,64 +66,67 @@ class VersionManager: ObservableObject {
         request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
         
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
+            let receivedData = data
+            let receivedError = error
+            
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.isLoading = false
                 
-                if let error = error {
-                    self?.errorMessage = "エラー: \(error.localizedDescription)"
+                if let error = receivedError {
+                    self.errorMessage = "エラー: \(error.localizedDescription)"
                     return
                 }
                 
-                guard let data = data else {
-                    self?.errorMessage = "データの取得に失敗しました"
+                guard let data = receivedData else {
+                    self.errorMessage = "データの取得に失敗しました"
                     return
                 }
                 
-                do {
-                    let releases = try JSONDecoder().decode([ReleaseInfo].self, from: data)
-                    
-                    // Draft Releaseを探す（最新のもの）
-                    let draftReleases = releases.filter { $0.draft }
-                    
-                    // Draft Releaseがない場合は、通常のReleaseを探す
-                    let availableReleases = draftReleases.isEmpty ? releases : draftReleases
-                    
-                    guard let latestRelease = availableReleases.first else {
-                        self?.errorMessage = "利用可能なリリースが見つかりません。GitHub Actionsでビルドが完了するまでお待ちください。"
-                        return
-                    }
-                    
-                    // タグ名からバージョン情報を抽出（例: build-5-abc1234 -> 5）
-                    let tagVersion = self?.extractVersionFromTag(latestRelease.tagName) ?? ""
-                    
-                    // IPAファイルを探す
-                    if let ipaAsset = latestRelease.assets.first(where: { $0.name.hasSuffix(".ipa") }) {
-                        self?.latestVersion = tagVersion
-                        self?.downloadUrl = ipaAsset.browserDownloadUrl
-                        
-                        // バージョン比較（簡易版：タグ名のビルド番号で比較）
-                        if let currentBuild = Int(self?.currentVersion.components(separatedBy: ".").last ?? "1"),
-                           let latestBuild = Int(tagVersion) {
-                            self?.updateAvailable = latestBuild > currentBuild
-                        } else {
-                            // 文字列比較（フォールバック）
-                            self?.updateAvailable = tagVersion != self?.currentVersion
-                        }
-                    } else {
-                        self?.errorMessage = "IPAファイルが見つかりません"
-                    }
-                } catch {
-                    self?.errorMessage = "データの解析に失敗しました: \(error.localizedDescription)"
-                }
+                self.processReleaseData(data)
             }
         }.resume()
     }
+
+    private func processReleaseData(_ data: Data) {
+        do {
+            let releases = try JSONDecoder().decode([ReleaseInfo].self, from: data)
+            let draftReleases = releases.filter { $0.draft }
+            let availableReleases = draftReleases.isEmpty ? releases : draftReleases
+            
+            guard let latestRelease = availableReleases.first else {
+                self.errorMessage = "利用可能なリリースが見つかりません"
+                return
+            }
+            
+            let tagVersion = self.extractVersionFromTag(latestRelease.tagName)
+            
+            if let ipaAsset = latestRelease.assets.first(where: { $0.name.hasSuffix(".ipa") }) {
+                self.latestVersion = tagVersion
+                self.downloadUrl = ipaAsset.browserDownloadUrl
+                updateCompareLogic(tagVersion: tagVersion)
+            } else {
+                self.errorMessage = "IPAファイルが見つかりません"
+            }
+        } catch {
+            self.errorMessage = "データの解析に失敗しました"
+        }
+    }
+
+    private func updateCompareLogic(tagVersion: String) {
+        let currentBuildStr = self.currentVersion.components(separatedBy: ".").last ?? "1"
+        if let currentBuild = Int(currentBuildStr),
+           let latestBuild = Int(tagVersion) {
+            self.updateAvailable = latestBuild > currentBuild
+        } else {
+            self.updateAvailable = tagVersion != self.currentVersion
+        }
+    }
     
     private func extractVersionFromTag(_ tag: String) -> String {
-        // build-5-abc1234 から 5 を抽出
         let components = tag.components(separatedBy: "-")
-        if components.count >= 2, let buildNumber = components[1] as String? {
-            return buildNumber
+        if components.count >= 2 {
+            return components[1]
         }
         return tag
     }
@@ -142,12 +138,12 @@ class VersionManager: ObservableObject {
             return
         }
         
-        // Safariでダウンロードページを開く
+        #if os(iOS)
         if UIApplication.shared.canOpenURL(url) {
             UIApplication.shared.open(url)
         } else {
-            errorMessage = "ダウンロードを開始できません"
+            errorMessage = "ダウンロードを開始できませんでした"
         }
+        #endif
     }
 }
-
