@@ -175,11 +175,14 @@ struct LiquidBackground: View {
 extension View {
     @ViewBuilder
     func glassEffect<S: Shape>(in shape: S) -> some View {
-        if #available(iOS 18.0, visionOS 2.0, *) {
-            self.background(Material.glass, in: shape)
-        } else {
-            self.background(.ultraThinMaterial, in: shape)
-        }
+        // iOS 18.0の.glassはShapeStyleとして使えるが、iOS 17.0との互換性のため
+        // .ultraThinMaterialを使用
+        self.background(.ultraThinMaterial, in: shape)
+            .overlay(
+                shape
+                    .stroke(.white.opacity(0.2), lineWidth: 0.5)
+                    .blendMode(.overlay)
+            )
     }
 }
 
