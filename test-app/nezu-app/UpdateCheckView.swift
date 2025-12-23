@@ -18,7 +18,7 @@ struct UpdateCheckView: View {
                                 .font(.system(size: 32, weight: .light))
                                 .foregroundStyle(.primary)
                                 .padding(16)
-                                .background(.glass, in: Circle())
+                                .glassEffect(in: Circle())
                             
                             Text("Software Update")
                                 .font(.system(size: 22, weight: .semibold))
@@ -56,7 +56,7 @@ struct UpdateCheckView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(.glass, in: RoundedRectangle(cornerRadius: 10))
+                            .glassEffect(in: RoundedRectangle(cornerRadius: 10))
                         }
                         .disabled(versionManager.isLoading)
                         .padding(.horizontal, 20)
@@ -92,7 +92,18 @@ struct LoadingView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
-        .background(.glass, in: RoundedRectangle(cornerRadius: 12))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+        if #available(iOS 18.0, visionOS 2.0, *) {
+            self.background(.glass, in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+        }
     }
 }
 
@@ -123,7 +134,7 @@ struct UpdateAvailableView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
-        .background(.glass, in: RoundedRectangle(cornerRadius: 12))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -146,7 +157,7 @@ struct UpToDateView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
-        .background(.glass, in: RoundedRectangle(cornerRadius: 12))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -166,6 +177,6 @@ struct ErrorView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
-        .background(.glass, in: RoundedRectangle(cornerRadius: 12))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 12))
     }
 }

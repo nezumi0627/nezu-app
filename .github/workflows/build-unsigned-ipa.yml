@@ -23,15 +23,33 @@ jobs:
         with:
           fetch-depth: 0  # 全履歴を取得（コミット一覧用）
 
+      - name: Initialize log files
+        run: |
+          # ログファイルを初期化
+          echo "=== Workflow Started ===" > workflow.log
+          echo "Timestamp: $(date -u)" >> workflow.log
+          echo "Repository: ${{ github.repository }}" >> workflow.log
+          echo "Commit: ${{ github.sha }}" >> workflow.log
+          echo "Branch: ${{ github.ref_name }}" >> workflow.log
+          echo "Run ID: ${{ github.run_id }}" >> workflow.log
+          echo "" >> workflow.log
+          
+          # その他のログファイルも初期化
+          echo "=== Build Log Started ===" > build.log
+          echo "=== IPA Creation Log Started ===" > ipa-creation.log
+          echo "=== Verification Log Started ===" > verification.log
+
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app
           echo "Xcode path: $(xcode-select -p)" | tee -a workflow.log
+        continue-on-error: true
 
       - name: Show Xcode version
         run: |
           echo "=== Xcode Version ===" | tee -a workflow.log
           xcodebuild -version | tee -a workflow.log
+        continue-on-error: true
 
       - name: Set build start time
         run: |
@@ -45,16 +63,18 @@ jobs:
 
       - name: List available schemes
         run: |
-          cd test-app || exit 1
+          cd test-app || { echo "ERROR: Failed to change directory to test-app" | tee -a ../workflow.log; exit 1; }
           echo "=== Available Schemes ===" | tee -a ../workflow.log
           if [ -f "*.xcworkspace" ]; then
-            xcodebuild -list -workspace *.xcworkspace | tee -a ../workflow.log || true
+            xcodebuild -list -workspace *.xcworkspace | tee -a ../workflow.log || { echo "ERROR: Failed to list workspace schemes" | tee -a ../workflow.log; exit 1; }
           elif [ -d "nezu-app.xcodeproj" ]; then
-            xcodebuild -list -project nezu-app.xcodeproj | tee -a ../workflow.log || true
+            xcodebuild -list -project nezu-app.xcodeproj | tee -a ../workflow.log || { echo "ERROR: Failed to list project schemes" | tee -a ../workflow.log; exit 1; }
           else
-            echo "No Xcode project found" | tee -a ../workflow.log
+            echo "ERROR: No Xcode project or workspace found" | tee -a ../workflow.log
             ls -la | tee -a ../workflow.log
+            exit 1
           fi
+        continue-on-error: false
 
       # ============================================================================
       # Build Process
@@ -87,7 +107,8 @@ jobs:
             
             BUILD_EXIT_CODE=${PIPESTATUS[0]}
             if [ $BUILD_EXIT_CODE -ne 0 ]; then
-              echo "Build failed with exit code: $BUILD_EXIT_CODE" | tee -a ../workflow.log
+              echo "ERROR: Build failed with exit code: $BUILD_EXIT_CODE" | tee -a ../workflow.log
+              echo "ERROR: Build log saved to build.log" | tee -a ../workflow.log
               exit $BUILD_EXIT_CODE
             fi
             
@@ -107,15 +128,16 @@ jobs:
               CODE_SIGN_IDENTITY="" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ENTITLEMENTS="" \
-              build 2>&1 | tee ../build.log
+              build 2>&1 | tee -a ../build.log
             
             BUILD_EXIT_CODE=${PIPESTATUS[0]}
             if [ $BUILD_EXIT_CODE -ne 0 ]; then
-              echo "Build failed with exit code: $BUILD_EXIT_CODE" | tee -a ../workflow.log
+              echo "ERROR: Build failed with exit code: $BUILD_EXIT_CODE" | tee -a ../workflow.log
+              echo "ERROR: Build log saved to build.log" | tee -a ../workflow.log
               exit $BUILD_EXIT_CODE
             fi
           else
-            echo "Error: No Xcode project or workspace found" | tee -a ../workflow.log
+            echo "ERROR: No Xcode project or workspace found" | tee -a ../workflow.log
             ls -la | tee -a ../workflow.log
             exit 1
           fi
@@ -182,10 +204,10 @@ jobs:
           
           # コピーが成功したか確認
           if [ ! -d "$TEMP_DIR/Payload/$APP_NAME" ]; then
-            echo "Error: Failed to copy .app to Payload" | tee -a workflow.log
-            echo "Source: ${{ steps.find_app.outputs.APP_PATH }}" | tee -a workflow.log
-            echo "Destination: $TEMP_DIR/Payload/$APP_NAME" | tee -a workflow.log
-            ls -la "$TEMP_DIR/Payload/" | tee -a workflow.log || true
+            echo "ERROR: Failed to copy .app to Payload" | tee -a workflow.log | tee -a ipa-creation.log
+            echo "ERROR: Source: ${{ steps.find_app.outputs.APP_PATH }}" | tee -a workflow.log | tee -a ipa-creation.log
+            echo "ERROR: Destination: $TEMP_DIR/Payload/$APP_NAME" | tee -a workflow.log | tee -a ipa-creation.log
+            ls -la "$TEMP_DIR/Payload/" | tee -a workflow.log | tee -a ipa-creation.log || true
             exit 1
           fi
           
@@ -215,7 +237,8 @@ jobs:
           
           # IPAファイルが作成されたか確認
           if [ ! -f "$IPA_PATH" ]; then
-            echo "Error: Failed to create IPA file" | tee -a workflow.log
+            echo "ERROR: Failed to create IPA file" | tee -a workflow.log | tee -a ipa-creation.log
+            echo "ERROR: IPA creation log saved to ipa-creation.log" | tee -a workflow.log
             exit 1
           fi
           
@@ -238,12 +261,12 @@ jobs:
           echo "=== IPA Verification ===" | tee -a workflow.log
           
           if [ ! -f "${{ env.IPA_NAME }}" ]; then
-            echo "Error: IPA file not found: ${{ env.IPA_NAME }}" | tee -a workflow.log
-            echo "Current directory: $(pwd)" | tee -a workflow.log
-            echo "Files in workspace:" | tee -a workflow.log
-            ls -la | tee -a workflow.log || true
-            echo "IPA files:" | tee -a workflow.log
-            ls -la *.ipa | tee -a workflow.log || true
+            echo "ERROR: IPA file not found: ${{ env.IPA_NAME }}" | tee -a workflow.log | tee -a verification.log
+            echo "ERROR: Current directory: $(pwd)" | tee -a workflow.log | tee -a verification.log
+            echo "ERROR: Files in workspace:" | tee -a workflow.log | tee -a verification.log
+            ls -la | tee -a workflow.log | tee -a verification.log || true
+            echo "ERROR: IPA files:" | tee -a workflow.log | tee -a verification.log
+            ls -la *.ipa | tee -a workflow.log | tee -a verification.log || true
             exit 1
           fi
           
@@ -260,9 +283,9 @@ jobs:
           if unzip -l "${{ env.IPA_NAME }}" | grep -q "^.*Payload/"; then
             echo "✓ Payload folder found in IPA" | tee -a verification.log
           else
-            echo "✗ ERROR: Payload folder NOT found in IPA" | tee -a verification.log
-            echo "Full contents:" | tee -a verification.log
-            unzip -l "${{ env.IPA_NAME }}" | tee -a verification.log
+            echo "✗ ERROR: Payload folder NOT found in IPA" | tee -a verification.log | tee -a workflow.log
+            echo "ERROR: Full contents:" | tee -a verification.log | tee -a workflow.log
+            unzip -l "${{ env.IPA_NAME }}" | tee -a verification.log | tee -a workflow.log
             exit 1
           fi
           
@@ -271,7 +294,8 @@ jobs:
           if unzip -l "${{ env.IPA_NAME }}" | grep -q "^.*Payload/.*\.app/"; then
             echo "✓ .app found in Payload folder" | tee -a verification.log
           else
-            echo "✗ ERROR: .app NOT found in Payload folder" | tee -a verification.log
+            echo "✗ ERROR: .app NOT found in Payload folder" | tee -a verification.log | tee -a workflow.log
+            echo "ERROR: Verification log saved to verification.log" | tee -a workflow.log
             exit 1
           fi
           
@@ -434,6 +458,7 @@ jobs:
           retention-days: 30
 
       - name: Upload debug logs artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-ipa-debug-logs
@@ -592,6 +617,29 @@ jobs:
           
           echo "Actions Summary generated successfully" | tee -a workflow.log
           echo "Summary file location: $GITHUB_STEP_SUMMARY" | tee -a workflow.log
+
+      # ============================================================================
+      # Error Summary (if failed)
+      # ============================================================================
+
+      - name: Generate error summary
+        if: failure()
+        run: |
+          echo "=== Build Failed ===" | tee -a workflow.log
+          echo "Timestamp: $(date -u)" | tee -a workflow.log
+          echo "" | tee -a workflow.log
+          echo "## ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The build process encountered an error. Please check the logs below for details." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Available Logs:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **workflow.log** - Complete workflow execution log" >> $GITHUB_STEP_SUMMARY
+          echo "- **build.log** - Xcode build output (if build started)" >> $GITHUB_STEP_SUMMARY
+          echo "- **ipa-creation.log** - IPA creation process log (if IPA creation started)" >> $GITHUB_STEP_SUMMARY
+          echo "- **verification.log** - IPA verification log (if verification started)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All logs are available in the **unsigned-ipa-debug-logs** artifact." >> $GITHUB_STEP_SUMMARY
 
       # ============================================================================
       # Backup Artifact

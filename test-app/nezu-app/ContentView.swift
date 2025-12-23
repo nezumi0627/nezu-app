@@ -22,7 +22,7 @@ struct ContentView: View {
                                 .font(.system(size: 32, weight: .light))
                                 .foregroundStyle(.primary)
                                 .padding(16)
-                                .background(.glass, in: Circle())
+                                .glassEffect(in: Circle())
                             
                             Text("Nezu App")
                                 .font(.system(size: 28, weight: .semibold, design: .default))
@@ -73,7 +73,7 @@ struct ContentView: View {
                             StatusRow(label: "Version", value: versionManager.currentVersion)
                         }
                         .padding(16)
-                        .background(.glass, in: RoundedRectangle(cornerRadius: 12))
+                        .glassEffect(in: RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal, 20)
                         .padding(.bottom, 40)
                     }
@@ -122,7 +122,7 @@ struct ActionButton: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(16)
-            .background(.glass, in: RoundedRectangle(cornerRadius: 12))
+            .glassEffect(in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(PlainButtonStyle())
     }

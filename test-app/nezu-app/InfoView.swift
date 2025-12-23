@@ -24,7 +24,7 @@ struct InfoView: View {
                             }
                             .frame(width: 64, height: 64)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(.glass, lineWidth: 2))
+                            .overlay(Circle().stroke(.ultraThinMaterial, lineWidth: 2))
                             
                             Text("ねずみ")
                                 .font(.system(size: 22, weight: .semibold))
@@ -39,7 +39,7 @@ struct InfoView: View {
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 6)
-                                .background(.glass, in: Capsule())
+                                .glassEffect(in: Capsule())
                         }
                         .padding(.top, 40)
                         
@@ -107,7 +107,18 @@ struct InfoCard: View {
             Spacer()
         }
         .padding(16)
-        .background(.glass, in: RoundedRectangle(cornerRadius: 12))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+        if #available(iOS 18.0, visionOS 2.0, *) {
+            self.background(.glass, in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+        }
     }
 }
 
@@ -128,7 +139,7 @@ struct SocialLink: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(16)
-            .background(.glass, in: RoundedRectangle(cornerRadius: 12))
+            .glassEffect(in: RoundedRectangle(cornerRadius: 12))
         }
     }
 }
