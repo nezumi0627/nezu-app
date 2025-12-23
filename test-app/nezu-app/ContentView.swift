@@ -244,7 +244,11 @@ extension View {
     func glassEffect(in shape: some Shape = .capsule) -> some View {
         if #available(iOS 18.0, visionOS 2.0, *) {
             self.background(.glass, in: shape)
-                .glassEffect(in: shape)
+                .overlay(
+                    shape
+                        .stroke(.white.opacity(0.2), lineWidth: 0.5)
+                        .blendMode(.overlay)
+                )
         } else {
             self.background(.ultraThinMaterial, in: shape)
                 .overlay(shape.stroke(Color.white.opacity(0.2), lineWidth: 0.5))
@@ -310,4 +314,35 @@ extension Color {
     }
     
     static let emerald = Color(red: 16/255, green: 185/255, blue: 129/255)
+}
+
+// MARK: - Missing Liquid Glass Components
+
+/// A premium container that provides the root structure for Liquid Glass interfaces.
+struct GlassEffectContainer<Content: View>: View {
+    let spacing: CGFloat
+    let content: Content
+    
+    init(spacing: CGFloat = 24, @ViewBuilder content: () -> Content) {
+        self.spacing = spacing
+        self.content = content()
+    }
+    
+    var body: some View {
+        ZStack {
+            content
+                .padding(.top, spacing)
+        }
+    }
+}
+
+/// Custom ShapeStyle extension to provide the luxury 'glass' look.
+extension ShapeStyle where Self == AnyShapeStyle {
+    static var glass: AnyShapeStyle {
+        if #available(iOS 18.0, visionOS 2.0, *) {
+            return AnyShapeStyle(.ultraThinMaterial.opacity(0.8))
+        } else {
+            return AnyShapeStyle(.ultraThinMaterial)
+        }
+    }
 }
