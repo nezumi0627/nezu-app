@@ -95,3 +95,7 @@ iOSInjectionProject/
 # GitHub Actions artifacts
 *.ipa
 
+# Debug logs
+unsigned-ipa-debug-logs/
+*.log
+
