@@ -496,6 +496,8 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           
+          echo "Generating Actions Summary..." | tee -a workflow.log
+          
           # メタデータから情報を読み込む
           IPA_NAME="${{ env.IPA_NAME }}"
           BUILD_DURATION="${{ env.BUILD_DURATION }}"
@@ -503,87 +505,93 @@ jobs:
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           
-          # JSON から情報を抽出（jq が使えない場合に備えて Python を使用）
-          if command -v jq &> /dev/null; then
-            IPA_SIZE_BYTES=$(jq -r '.ipa_size_bytes' build-metadata.json)
-            IPA_SHA256=$(jq -r '.ipa_sha256' build-metadata.json)
-            RUNNER_OS=$(jq -r '.runner.os' build-metadata.json)
-            RUNNER_ARCH=$(jq -r '.runner.arch' build-metadata.json)
+          # JSON から情報を抽出
+          if [ -f build-metadata.json ]; then
+            if command -v jq &> /dev/null; then
+              IPA_SIZE_BYTES=$(jq -r '.ipa_size_bytes' build-metadata.json)
+              IPA_SHA256=$(jq -r '.ipa_sha256' build-metadata.json)
+              RUNNER_OS=$(jq -r '.runner.os' build-metadata.json)
+              RUNNER_ARCH=$(jq -r '.runner.arch' build-metadata.json)
+            else
+              # Python で JSON をパース
+              IPA_SIZE_BYTES=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['ipa_size_bytes'])")
+              IPA_SHA256=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['ipa_sha256'])")
+              RUNNER_OS=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['runner']['os'])")
+              RUNNER_ARCH=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['runner']['arch'])")
+            fi
           else
-            # Python で JSON をパース
-            IPA_SIZE_BYTES=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['ipa_size_bytes'])")
-            IPA_SHA256=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['ipa_sha256'])")
-            RUNNER_OS=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['runner']['os'])")
-            RUNNER_ARCH=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['runner']['arch'])")
+            echo "Warning: build-metadata.json not found, using defaults" | tee -a workflow.log
+            IPA_SIZE_BYTES="unknown"
+            IPA_SHA256="unknown"
+            RUNNER_OS="macOS"
+            RUNNER_ARCH="unknown"
           fi
           
-          IPA_SIZE_HUMAN=$(du -h "$IPA_NAME" | cut -f1)
+          if [ -f "$IPA_NAME" ]; then
+            IPA_SIZE_HUMAN=$(du -h "$IPA_NAME" | cut -f1)
+          else
+            IPA_SIZE_HUMAN="unknown"
+          fi
+          
+          BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           
           # GitHub Actions Summary に書き込む
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          # 🎉 Build Completed Successfully
+          {
+            echo "# 🎉 Build Completed Successfully"
+            echo ""
+            echo "## 📦 Build Artifacts"
+            echo ""
+            echo "| Artifact | Description | Size |"
+            echo "|----------|-------------|------|"
+            echo "| **IPA File** | Unsigned IPA package | \`${IPA_SIZE_HUMAN}\` |"
+            echo "| **Build Metadata** | Release notes, metadata, commit list | 4.79 KB |"
+            echo "| **Debug Logs** | Build logs, verification logs | 6.01 KB |"
+            echo ""
+            echo "## 🔗 Quick Links"
+            echo ""
+            echo "- 🚀 **[View Release (Draft)](${RELEASE_URL})** - Download IPA and view release notes"
+            echo "- 📋 **[View Build Run](${RUN_URL})** - See detailed build logs"
+            echo "- 📦 **[Download Artifacts](#)** - Scroll down to download all artifacts"
+            echo ""
+            echo "## 📊 Build Information"
+            echo ""
+            echo "- **Build Duration**: \`${BUILD_DURATION}\`"
+            echo "- **IPA File**: \`${IPA_NAME}\`"
+            echo "- **IPA Size**: \`${IPA_SIZE_HUMAN}\` (\`${IPA_SIZE_BYTES}\` bytes)"
+            echo "- **IPA SHA256**: \`\`${IPA_SHA256}\`\`"
+            echo "- **Runner**: \`${RUNNER_OS}\` (\`${RUNNER_ARCH}\`)"
+            echo ""
+            echo "## 📝 What's Included"
+            echo ""
+            echo "### Artifacts Available for Download:"
+            echo ""
+            echo "1. **unsigned-ipa-backup** - IPA file backup"
+            echo "2. **unsigned-ipa-build-metadata** - Contains:"
+            echo "   - \`release-body.md\` - Release notes in Markdown"
+            echo "   - \`build-metadata.json\` - Machine-readable build metadata"
+            echo "   - \`commit-list.md\` - Latest 10 commits"
+            echo "   - \`runner-system-info.txt\` - Runner system information"
+            echo "   - \`runner-env.txt\` - Environment variables"
+            echo "   - \`runner-xcode-info.txt\` - Xcode and SDK information"
+            echo "3. **unsigned-ipa-debug-logs** - Contains:"
+            echo "   - \`workflow.log\` - Complete workflow execution log"
+            echo "   - \`build.log\` - Xcode build output"
+            echo "   - \`ipa-creation.log\` - IPA creation process log"
+            echo "   - \`verification.log\` - IPA verification log"
+            echo ""
+            echo "## ⚠️ Important Notes"
+            echo ""
+            echo "- This IPA is **unsigned** and requires SideStore for installation"
+            echo "- The release is created as a **draft** - you can review and publish it manually"
+            echo "- All artifacts are retained for **30 days**"
+            echo ""
+            echo "---"
+            echo ""
+            echo "**Build completed at**: ${BUILD_TIME}"
+          } >> $GITHUB_STEP_SUMMARY
           
-          ## 📦 Build Artifacts
-          
-          | Artifact | Description | Size |
-          |----------|-------------|------|
-          | **IPA File** | Unsigned IPA package | `__IPA_SIZE_HUMAN__` |
-          | **Build Metadata** | Release notes, metadata, commit list | 4.79 KB |
-          | **Debug Logs** | Build logs, verification logs | 6.01 KB |
-          
-          ## 🔗 Quick Links
-          
-          - 🚀 **[View Release (Draft)](__RELEASE_URL__)** - Download IPA and view release notes
-          - 📋 **[View Build Run](__RUN_URL__)** - See detailed build logs
-          - 📦 **[Download Artifacts](#)** - Scroll down to download all artifacts
-          
-          ## 📊 Build Information
-          
-          - **Build Duration**: `__BUILD_DURATION__`
-          - **IPA File**: `__IPA_NAME__`
-          - **IPA Size**: `__IPA_SIZE_HUMAN__` (`__IPA_SIZE_BYTES__` bytes)
-          - **IPA SHA256**: `` `__IPA_SHA256__` ``
-          - **Runner**: `__RUNNER_OS__` (`__RUNNER_ARCH__`)
-          
-          ## 📝 What's Included
-          
-          ### Artifacts Available for Download:
-          
-          1. **unsigned-ipa-backup** - IPA file backup
-          2. **unsigned-ipa-build-metadata** - Contains:
-             - `release-body.md` - Release notes in Markdown
-             - `build-metadata.json` - Machine-readable build metadata
-             - `commit-list.md` - Latest 10 commits
-             - `runner-system-info.txt` - Runner system information
-             - `runner-env.txt` - Environment variables
-             - `runner-xcode-info.txt` - Xcode and SDK information
-          3. **unsigned-ipa-debug-logs** - Contains:
-             - `workflow.log` - Complete workflow execution log
-             - `build.log` - Xcode build output
-             - `ipa-creation.log` - IPA creation process log
-             - `verification.log` - IPA verification log
-          
-          ## ⚠️ Important Notes
-          
-          - This IPA is **unsigned** and requires SideStore for installation
-          - The release is created as a **draft** - you can review and publish it manually
-          - All artifacts are retained for **30 days**
-          
-          ---
-          
-          **Build completed at**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          EOF
-          
-          # プレースホルダを置換
-          perl -pi -e "s#__IPA_NAME__#$IPA_NAME#g" $GITHUB_STEP_SUMMARY
-          perl -pi -e "s#__IPA_SIZE_HUMAN__#$IPA_SIZE_HUMAN#g" $GITHUB_STEP_SUMMARY
-          perl -pi -e "s#__IPA_SIZE_BYTES__#$IPA_SIZE_BYTES#g" $GITHUB_STEP_SUMMARY
-          perl -pi -e "s#__IPA_SHA256__#$IPA_SHA256#g" $GITHUB_STEP_SUMMARY
-          perl -pi -e "s#__BUILD_DURATION__#$BUILD_DURATION#g" $GITHUB_STEP_SUMMARY
-          perl -pi -e "s#__RUNNER_OS__#$RUNNER_OS#g" $GITHUB_STEP_SUMMARY
-          perl -pi -e "s#__RUNNER_ARCH__#$RUNNER_ARCH#g" $GITHUB_STEP_SUMMARY
-          perl -pi -e "s#__RELEASE_URL__#$RELEASE_URL#g" $GITHUB_STEP_SUMMARY
-          perl -pi -e "s#__RUN_URL__#$RUN_URL#g" $GITHUB_STEP_SUMMARY
+          echo "Actions Summary generated successfully" | tee -a workflow.log
+          echo "Summary file location: $GITHUB_STEP_SUMMARY" | tee -a workflow.log
 
       # ============================================================================
       # Backup Artifact
