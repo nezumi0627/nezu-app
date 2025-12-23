@@ -1,0 +1,269 @@
+name: Build Unsigned IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write  # Releaseを作成するために必要
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: List available schemes
+        run: |
+          cd test-app || exit 1
+          if [ -f "*.xcworkspace" ]; then
+            xcodebuild -list -workspace *.xcworkspace || true
+          elif [ -d "nezu-app.xcodeproj" ]; then
+            xcodebuild -list -project nezu-app.xcodeproj || true
+          else
+            echo "No Xcode project found"
+            ls -la
+          fi
+
+      - name: Build (unsigned)
+        run: |
+          # nezu-appプロジェクトをビルド
+          cd test-app || exit 1
+          # プロジェクトファイルを検索
+          if [ -f *.xcworkspace ]; then
+            WORKSPACE=$(ls *.xcworkspace | head -n 1)
+            SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" | grep -A 1 "Schemes:" | tail -n 1 | xargs)
+            xcodebuild \
+              -workspace "$WORKSPACE" \
+              -scheme "$SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -derivedDataPath ../DerivedData \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ENTITLEMENTS="" \
+              build
+          elif [ -d nezu-app.xcodeproj ]; then
+            PROJECT="nezu-app.xcodeproj"
+            SCHEME=$(xcodebuild -list -project "$PROJECT" | grep -A 1 "Schemes:" | tail -n 1 | xargs)
+            xcodebuild \
+              -project "$PROJECT" \
+              -scheme "$SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -derivedDataPath ../DerivedData \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ENTITLEMENTS="" \
+              build
+          else
+            echo "Error: No Xcode project or workspace found"
+            ls -la
+            exit 1
+          fi
+
+      - name: Find built app
+        id: find_app
+        run: |
+          # 作業ディレクトリをルートに戻す
+          cd ${{ github.workspace }}
+          
+          # DerivedDataから.appファイルを検索
+          APP_PATH=$(find ./DerivedData -name "*.app" -type d | grep -i "Release-iphoneos" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH=$(find ./DerivedData -name "*.app" -type d | head -n 1)
+          fi
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: .app file not found"
+            echo "Searching in DerivedData:"
+            find ./DerivedData -type d -name "*.app" || true
+            echo "DerivedData contents:"
+            ls -la ./DerivedData || true
+            exit 1
+          fi
+          
+          # 絶対パスに変換
+          APP_PATH=$(cd "$(dirname "$APP_PATH")" && pwd)/$(basename "$APP_PATH")
+          
+          echo "APP_PATH=$APP_PATH" >> $GITHUB_OUTPUT
+          echo "Found app at: $APP_PATH"
+          ls -la "$APP_PATH"
+
+      - name: Extract app name
+        id: app_name
+        run: |
+          APP_NAME=$(basename "${{ steps.find_app.outputs.APP_PATH }}" .app)
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "App name: $APP_NAME"
+
+      - name: Create IPA
+        run: |
+          # 作業ディレクトリをルートに戻す
+          cd ${{ github.workspace }}
+          
+          # 一時ディレクトリを作成
+          TEMP_DIR=$(mktemp -d)
+          echo "Temporary directory: $TEMP_DIR"
+          
+          # Payloadフォルダを作成
+          mkdir -p "$TEMP_DIR/Payload"
+          
+          # .appファイルをPayloadフォルダにコピー
+          APP_NAME=$(basename "${{ steps.find_app.outputs.APP_PATH }}")
+          cp -R "${{ steps.find_app.outputs.APP_PATH }}" "$TEMP_DIR/Payload/"
+          
+          # コピーが成功したか確認
+          if [ ! -d "$TEMP_DIR/Payload/$APP_NAME" ]; then
+            echo "Error: Failed to copy .app to Payload"
+            echo "Source: ${{ steps.find_app.outputs.APP_PATH }}"
+            echo "Destination: $TEMP_DIR/Payload/$APP_NAME"
+            ls -la "$TEMP_DIR/Payload/" || true
+            exit 1
+          fi
+          
+          echo "Payload structure:"
+          ls -la "$TEMP_DIR/Payload/"
+          echo "App contents:"
+          ls -la "$TEMP_DIR/Payload/$APP_NAME/" | head -10
+          
+          # IPAファイル名を設定（一意になるようにビルド番号とコミットハッシュを含める）
+          # run_numberは常に増加するので被らない、short_shaでコミットを識別
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IPA_NAME="${{ steps.app_name.outputs.APP_NAME }}-unsigned-build${{ github.run_number }}-${SHORT_SHA}.ipa"
+          IPA_PATH="${{ github.workspace }}/$IPA_NAME"
+          
+          # 既存のIPAファイルがあれば削除
+          rm -f "$IPA_PATH"
+          
+          # Payloadフォルダを含めてzipファイルを作成
+          # 重要: Payloadフォルダの親ディレクトリから実行し、Payloadフォルダ自体を含める
+          cd "$TEMP_DIR"
+          zip -r "$IPA_PATH" Payload -x "*.DS_Store" "*.git*" "*.swp" "*.swo"
+          
+          # 作業ディレクトリを戻す
+          cd ${{ github.workspace }}
+          
+          # IPAファイルが作成されたか確認
+          if [ ! -f "$IPA_PATH" ]; then
+            echo "Error: Failed to create IPA file"
+            exit 1
+          fi
+          
+          # IPAファイルの内容を詳細に確認
+          echo "IPA file created: $IPA_PATH"
+          ls -lh "$IPA_PATH"
+          echo ""
+          echo "=== IPA file structure verification ==="
+          echo "First 30 lines of IPA contents:"
+          unzip -l "$IPA_PATH" | head -30
+          echo ""
+          echo "Checking for Payload folder:"
+          if unzip -l "$IPA_PATH" | grep -q "^.*Payload/"; then
+            echo "✓ Payload folder found in IPA"
+          else
+            echo "✗ ERROR: Payload folder NOT found in IPA"
+            echo "Full contents:"
+            unzip -l "$IPA_PATH"
+            exit 1
+          fi
+          echo ""
+          echo "Checking for .app in Payload:"
+          if unzip -l "$IPA_PATH" | grep -q "^.*Payload/.*\.app/"; then
+            echo "✓ .app found in Payload folder"
+          else
+            echo "✗ ERROR: .app NOT found in Payload folder"
+            exit 1
+          fi
+          
+          # 一時ディレクトリをクリーンアップ
+          rm -rf "$TEMP_DIR"
+          
+          echo "IPA_NAME=$IPA_NAME" >> $GITHUB_ENV
+
+      - name: Verify IPA file before upload
+        id: verify_ipa
+        run: |
+          cd ${{ github.workspace }}
+          if [ ! -f "${{ env.IPA_NAME }}" ]; then
+            echo "Error: IPA file not found: ${{ env.IPA_NAME }}"
+            echo "Current directory: $(pwd)"
+            echo "Files in workspace:"
+            ls -la || true
+            echo "IPA files:"
+            ls -la *.ipa || true
+            exit 1
+          fi
+          echo "IPA file ready: ${{ env.IPA_NAME }}"
+          ls -lh "${{ env.IPA_NAME }}"
+          echo "IPA_FILE_PATH=${{ github.workspace }}/${{ env.IPA_NAME }}" >> $GITHUB_OUTPUT
+
+      - name: Create Draft Release and Upload IPA
+        id: create_release
+        continue-on-error: false
+        run: |
+          cd ${{ github.workspace }}
+          echo "=== Release Creation Debug Info ==="
+          echo "IPA file name: ${{ env.IPA_NAME }}"
+          echo "IPA file path: ${{ github.workspace }}/${{ env.IPA_NAME }}"
+          echo "Current directory: $(pwd)"
+          echo "Files in workspace:"
+          ls -la || true
+          echo "IPA files:"
+          ls -lh *.ipa || true
+          echo ""
+          if [ ! -f "${{ env.IPA_NAME }}" ]; then
+            echo "ERROR: IPA file not found!"
+            exit 1
+          fi
+          echo "IPA file exists and is ready for upload"
+          ls -lh "${{ env.IPA_NAME }}"
+        env:
+          IPA_NAME: ${{ env.IPA_NAME }}
+
+      - name: Upload IPA to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "build-${{ github.run_number }}-${{ github.sha }}"
+          name: "Build #${{ github.run_number }} - ${{ github.sha }}"
+          body: |
+            ## Unsigned IPA Build
+            
+            - **Commit**: ${{ github.sha }}
+            - **Branch**: ${{ github.ref_name }}
+            - **Workflow**: ${{ github.workflow }}
+            - **Run**: #${{ github.run_number }}
+            - **IPA File**: ${{ env.IPA_NAME }}
+            
+            ### ダウンロード方法
+            
+            1. 下の「Assets」セクションから `.ipa` ファイルをダウンロード
+            2. SideStoreでインストール可能
+            
+            **注意**: このIPAは署名無しです。SideStoreで署名してからインストールしてください。
+          draft: true
+          prerelease: false
+          files: |
+            ${{ env.IPA_NAME }}
+          fail_on_unmatched_files: true
+
+      - name: Upload IPA as Artifact (backup)
+        if: always() && env.IPA_NAME != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-ipa-backup
+          path: ${{ github.workspace }}/${{ env.IPA_NAME }}
+          retention-days: 30
+          if-no-files-found: warn
+
