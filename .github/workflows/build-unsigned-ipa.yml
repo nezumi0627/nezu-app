@@ -370,8 +370,10 @@ jobs:
           echo "Generating commit list..." | tee -a workflow.log
           git log -10 --pretty=format:'- `%h` %ad **%an**: %s' --date=short > commit-list.md
 
-          TAG_NAME="build-${{ github.run_number }}-${{ github.sha }}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
+          # タグ名は後でリリース作成後に実際のタグ名を取得する
+          # 一時的な値として設定（後で更新される）
+          TAG_NAME="untagged-temp"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases"
 
           cat > release-body.md << 'EOF'
           ## Unsigned IPA Build
@@ -503,7 +505,7 @@ jobs:
         id: release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: "build-${{ github.run_number }}-${{ github.sha }}"
+          tag_name: ""  # 空にすることで、自動的にuntagged-形式のタグが作成される
           name: "Build #${{ github.run_number }} - ${{ github.sha }}"
           body_path: release-body.md
           draft: true
@@ -511,6 +513,101 @@ jobs:
           files: |
             ${{ env.IPA_NAME }}
           fail_on_unmatched_files: true
+
+      - name: Get actual release tag and URL
+        if: success()
+        id: get_release_info
+        run: |
+          cd ${{ github.workspace }}
+          
+          echo "Getting actual release information..." | tee -a workflow.log
+          
+          # GitHub APIから最新のdraftリリースを取得（作成直後のリリース）
+          # 少し待ってからAPIを呼び出す（リリース作成の反映を待つ）
+          sleep 2
+          
+          RELEASE_INFO=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases?per_page=5")
+          
+          echo "API Response (first 500 chars):" | tee -a workflow.log
+          echo "$RELEASE_INFO" | head -c 500 | tee -a workflow.log
+          echo "" | tee -a workflow.log
+          
+          # JSONから最新のdraftリリースを取得
+          if command -v jq &> /dev/null; then
+            RELEASE_URL=$(echo "$RELEASE_INFO" | jq -r '[.[] | select(.draft == true)][0].html_url // empty')
+            ACTUAL_TAG=$(echo "$RELEASE_INFO" | jq -r '[.[] | select(.draft == true)][0].tag_name // empty')
+            
+            # draftが見つからない場合は最新のリリースを使用
+            if [ -z "$RELEASE_URL" ]; then
+              RELEASE_URL=$(echo "$RELEASE_INFO" | jq -r '.[0].html_url // empty')
+              ACTUAL_TAG=$(echo "$RELEASE_INFO" | jq -r '.[0].tag_name // empty')
+            fi
+          else
+            # PythonでJSONをパース
+            RESULT=$(echo "$RELEASE_INFO" | python3 << 'PYEOF'
+import json
+import sys
+try:
+    releases = json.load(sys.stdin)
+    # draftリリースを探す
+    draft_release = next((r for r in releases if r.get('draft', False)), None)
+    if draft_release:
+        print(draft_release.get('html_url', ''))
+        print(draft_release.get('tag_name', ''))
+    elif releases:
+        print(releases[0].get('html_url', ''))
+        print(releases[0].get('tag_name', ''))
+    else:
+        print('')
+        print('')
+except Exception as e:
+    print('', file=sys.stderr)
+    print('', file=sys.stderr)
+    print('')
+    print('')
+PYEOF
+            )
+            RELEASE_URL=$(echo "$RESULT" | head -n 1)
+            ACTUAL_TAG=$(echo "$RESULT" | tail -n 1)
+          fi
+          
+          if [ -z "$RELEASE_URL" ] || [ "$RELEASE_URL" = "null" ]; then
+            echo "Warning: Could not determine release URL from API, using fallback" | tee -a workflow.log
+            RELEASE_URL="https://github.com/${{ github.repository }}/releases"
+            ACTUAL_TAG="untagged-unknown"
+          fi
+          
+          echo "ACTUAL_RELEASE_URL=$RELEASE_URL" >> $GITHUB_OUTPUT
+          echo "ACTUAL_TAG=$ACTUAL_TAG" >> $GITHUB_OUTPUT
+          echo "Release URL: $RELEASE_URL" | tee -a workflow.log
+          echo "Actual tag: $ACTUAL_TAG" | tee -a workflow.log
+          
+          # メタデータJSONを更新
+          if [ -f build-metadata.json ]; then
+            if command -v jq &> /dev/null; then
+              jq --arg url "$RELEASE_URL" --arg tag "$ACTUAL_TAG" \
+                '.release_url = $url | .tag_name = $tag' build-metadata.json > build-metadata.json.tmp
+              mv build-metadata.json.tmp build-metadata.json
+            else
+              python3 -c "
+import json
+import os
+release_url = os.environ.get('RELEASE_URL', '')
+actual_tag = os.environ.get('ACTUAL_TAG', '')
+with open('build-metadata.json', 'r') as f:
+    data = json.load(f)
+data['release_url'] = release_url
+data['tag_name'] = actual_tag
+with open('build-metadata.json', 'w') as f:
+    json.dump(data, f, indent=2)
+" RELEASE_URL="$RELEASE_URL" ACTUAL_TAG="$ACTUAL_TAG"
+            fi
+          fi
+          
+          # release-body.mdも更新
+          perl -pi -e "s#https://github.com/\${{ github.repository }}/releases#${RELEASE_URL}#g" release-body.md || true
 
       # ============================================================================
       # Generate Actions Summary
@@ -526,8 +623,29 @@ jobs:
           # メタデータから情報を読み込む
           IPA_NAME="${{ env.IPA_NAME }}"
           BUILD_DURATION="${{ env.BUILD_DURATION }}"
-          TAG_NAME="build-${{ github.run_number }}-${{ github.sha }}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
+          
+          # 実際のリリースURLとタグ名を取得（リリース作成後のステップから）
+          if [ -n "${{ steps.get_release_info.outputs.ACTUAL_RELEASE_URL }}" ]; then
+            RELEASE_URL="${{ steps.get_release_info.outputs.ACTUAL_RELEASE_URL }}"
+            TAG_NAME="${{ steps.get_release_info.outputs.ACTUAL_TAG }}"
+          else
+            # フォールバック: メタデータJSONから取得
+            if [ -f build-metadata.json ]; then
+              if command -v jq &> /dev/null; then
+                RELEASE_URL=$(jq -r '.release_url // empty' build-metadata.json)
+                TAG_NAME=$(jq -r '.tag_name // empty' build-metadata.json)
+              else
+                RELEASE_URL=$(python3 -c "import json; print(json.load(open('build-metadata.json')).get('release_url', ''))")
+                TAG_NAME=$(python3 -c "import json; print(json.load(open('build-metadata.json')).get('tag_name', ''))")
+              fi
+            fi
+            
+            if [ -z "$RELEASE_URL" ]; then
+              RELEASE_URL="https://github.com/${{ github.repository }}/releases"
+              TAG_NAME="untagged-unknown"
+            fi
+          fi
+          
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           
           # JSON から情報を抽出
