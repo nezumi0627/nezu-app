@@ -1,6 +1,6 @@
-# IPA Builder
+# nezu-app (IPA Builder)
 
-GitHub Actions を使用して署名無し IPA をビルドするプロジェクトです。
+GitHub Actions を使用して署名無し IPA をビルドするプロジェクトです。リポジトリ: https://github.com/nezumi0627/nezu-app
 
 ## 概要
 
@@ -10,8 +10,8 @@ GitHub Actions を使用して署名無し IPA をビルドするプロジェク
 
 このリポジトリには、iOS アプリ（`nezu-app`）が含まれています。
 
-- **nezu-app**: SwiftUI で作成されたカウンターアプリ
-  - プロジェクトパス: `nezu-app/nezu-app.xcodeproj`
+- **nezu-app**: SwiftUI ベースのデモアプリ
+  - プロジェクトパス: `test-app/nezu-app.xcodeproj`
   - Scheme: `nezu-app`
   - アプリ名: Nezu App
 
@@ -23,7 +23,7 @@ GitHub Actions を使用して署名無し IPA をビルドするプロジェク
 
 **重要**: 以下の設定をローカルの Xcode で事前に行ってください。
 
-1. Xcode で `nezu-app/nezu-app.xcodeproj` を開く
+1. Xcode で `test-app/nezu-app.xcodeproj` を開く
 2. プロジェクトを選択 → **Signing & Capabilities** タブ
 3. 以下の設定を行う：
    - **Automatically manage signing**: **OFF**
@@ -35,12 +35,14 @@ GitHub Actions を使用して署名無し IPA をビルドするプロジェク
 
 ## 使用方法
 
-### 1. プロジェクトを GitHub にプッシュ
+### 1. 新規リポジトリへのプッシュ
 
 ```bash
+git init
+git remote add origin https://github.com/nezumi0627/nezu-app.git
 git add .
-git commit -m "Add iOS project"
-git push origin main
+git commit -m "Initial commit"
+git push -u origin main
 ```
 
 ### 2. GitHub Actions でビルド

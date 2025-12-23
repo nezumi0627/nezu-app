@@ -42,7 +42,8 @@ class VersionManager: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    private let githubRepo = "nezumi0627/ipa-builder"
+    // GitHub Releasesを確認するリポジトリ
+    private let githubRepo = "nezumi0627/nezu-app"
     private let apiBaseUrl = "https://api.github.com/repos"
     
     init() {
