@@ -545,30 +545,24 @@ jobs:
               ACTUAL_TAG=$(echo "$RELEASE_INFO" | jq -r '.[0].tag_name // empty')
             fi
           else
-            # PythonでJSONをパース
-            RESULT=$(echo "$RELEASE_INFO" | python3 << 'PYEOF'
-import json
-import sys
-try:
-    releases = json.load(sys.stdin)
-    # draftリリースを探す
-    draft_release = next((r for r in releases if r.get('draft', False)), None)
-    if draft_release:
-        print(draft_release.get('html_url', ''))
-        print(draft_release.get('tag_name', ''))
-    elif releases:
-        print(releases[0].get('html_url', ''))
-        print(releases[0].get('tag_name', ''))
-    else:
-        print('')
-        print('')
-except Exception as e:
-    print('', file=sys.stderr)
-    print('', file=sys.stderr)
-    print('')
-    print('')
-PYEOF
-            )
+            # PythonでJSONをパース（heredocを使わずにechoで作成）
+            echo 'import json, sys' > /tmp/parse_release.py
+            echo 'try:' >> /tmp/parse_release.py
+            echo '    releases = json.load(sys.stdin)' >> /tmp/parse_release.py
+            echo '    draft_release = next((r for r in releases if r.get("draft", False)), None)' >> /tmp/parse_release.py
+            echo '    if draft_release:' >> /tmp/parse_release.py
+            echo '        print(draft_release.get("html_url", ""))' >> /tmp/parse_release.py
+            echo '        print(draft_release.get("tag_name", ""))' >> /tmp/parse_release.py
+            echo '    elif releases:' >> /tmp/parse_release.py
+            echo '        print(releases[0].get("html_url", ""))' >> /tmp/parse_release.py
+            echo '        print(releases[0].get("tag_name", ""))' >> /tmp/parse_release.py
+            echo '    else:' >> /tmp/parse_release.py
+            echo '        print("")' >> /tmp/parse_release.py
+            echo '        print("")' >> /tmp/parse_release.py
+            echo 'except Exception:' >> /tmp/parse_release.py
+            echo '    print("")' >> /tmp/parse_release.py
+            echo '    print("")' >> /tmp/parse_release.py
+            RESULT=$(echo "$RELEASE_INFO" | python3 /tmp/parse_release.py)
             RELEASE_URL=$(echo "$RESULT" | head -n 1)
             ACTUAL_TAG=$(echo "$RESULT" | tail -n 1)
           fi
@@ -591,18 +585,16 @@ PYEOF
                 '.release_url = $url | .tag_name = $tag' build-metadata.json > build-metadata.json.tmp
               mv build-metadata.json.tmp build-metadata.json
             else
-              python3 -c "
-import json
-import os
-release_url = os.environ.get('RELEASE_URL', '')
-actual_tag = os.environ.get('ACTUAL_TAG', '')
-with open('build-metadata.json', 'r') as f:
-    data = json.load(f)
-data['release_url'] = release_url
-data['tag_name'] = actual_tag
-with open('build-metadata.json', 'w') as f:
-    json.dump(data, f, indent=2)
-" RELEASE_URL="$RELEASE_URL" ACTUAL_TAG="$ACTUAL_TAG"
+              echo 'import json, os' > /tmp/update_metadata.py
+              echo 'release_url = os.environ.get("RELEASE_URL", "")' >> /tmp/update_metadata.py
+              echo 'actual_tag = os.environ.get("ACTUAL_TAG", "")' >> /tmp/update_metadata.py
+              echo 'with open("build-metadata.json", "r") as f:' >> /tmp/update_metadata.py
+              echo '    data = json.load(f)' >> /tmp/update_metadata.py
+              echo 'data["release_url"] = release_url' >> /tmp/update_metadata.py
+              echo 'data["tag_name"] = actual_tag' >> /tmp/update_metadata.py
+              echo 'with open("build-metadata.json", "w") as f:' >> /tmp/update_metadata.py
+              echo '    json.dump(data, f, indent=2)' >> /tmp/update_metadata.py
+              RELEASE_URL="$RELEASE_URL" ACTUAL_TAG="$ACTUAL_TAG" python3 /tmp/update_metadata.py
             fi
           fi
           
