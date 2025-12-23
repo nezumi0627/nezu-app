@@ -111,17 +111,6 @@ struct InfoCard: View {
     }
 }
 
-extension View {
-    @ViewBuilder
-    func glassEffect<S: Shape>(in shape: S) -> some View {
-        if #available(iOS 18.0, visionOS 2.0, *) {
-            self.background(.glass, in: shape)
-        } else {
-            self.background(.ultraThinMaterial, in: shape)
-        }
-    }
-}
-
 struct SocialLink: View {
     let title: String
     let icon: String

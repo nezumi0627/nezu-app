@@ -1,0 +1,232 @@
+=== Build Log Started ===
+Command line invocation:
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/xcodebuild -project nezu-app.xcodeproj -scheme nezu-app -configuration Release -sdk iphoneos -derivedDataPath ../DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY= CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ENTITLEMENTS= build
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+    CODE_SIGNING_ENTITLEMENTS = 
+    CODE_SIGNING_REQUIRED = NO
+    SDKROOT = iphoneos18.5
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:iOS, id:dvtdevice-DVTiPhonePlaceholder-iphoneos:placeholder, name:Any iOS Device }
+{ platform:macOS, arch:arm64, variant:Designed for [iPad,iPhone], id:e3a48cbaa22277dcd512407124f2d809c7436164, name:My Mac }
+{ platform:iOS Simulator, id:dvtdevice-DVTiOSDeviceSimulatorPlaceholder-iphonesimulator:placeholder, name:Any iOS Simulator Device }
+note: Using codesigning identity override: 
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'nezu-app' in project 'nezu-app' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Preview Content/Preview Assets.xcassets /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 1a797c210ec46f4c6a2c7f8e2d390107
+Build description path: /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/XCBuildData/1a797c210ec46f4c6a2c7f8e2d390107.xcbuilddata
+ClangStatCache /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk /Users/runner/work/nezu-app/nezu-app/DerivedData/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache
+    cd /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app.xcodeproj
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -o /Users/runner/work/nezu-app/nezu-app/DerivedData/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache
+
+CreateBuildDirectory /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products
+    cd /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app.xcodeproj
+    builtin-create-build-directory /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products
+
+CreateBuildDirectory /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex
+    cd /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app.xcodeproj
+    builtin-create-build-directory /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app-4e7956725098b805ac932121f3bf3479-VFS-iphoneos/all-product-headers.yaml
+    cd /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app.xcodeproj
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app-4e7956725098b805ac932121f3bf3479-VFS-iphoneos/all-product-headers.yaml
+
+CreateBuildDirectory /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos
+    cd /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app.xcodeproj
+    builtin-create-build-directory /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos
+
+CreateBuildDirectory /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Release-iphoneos
+    cd /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app.xcodeproj
+    builtin-create-build-directory /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Release-iphoneos
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app.DependencyStaticMetadataFileList (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app.hmap (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app.hmap
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app.DependencyMetadataFileList (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-project-headers.hmap (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-project-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-own-target-headers.hmap (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-generated-files.hmap (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-generated-files.hmap
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-all-target-headers.hmap (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-all-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-all-non-framework-target-headers.hmap (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app_const_extract_protocols.json (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app.SwiftFileList (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app.SwiftFileList
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app.SwiftConstValuesFileList (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app.LinkFileList (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app.LinkFileList
+
+WriteAuxiliaryFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app-OutputFileMap.json (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    write-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app-OutputFileMap.json
+
+MkDir /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/nezu-app.app (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    /bin/mkdir -p /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/nezu-app.app
+
+ValidateDevelopmentAssets /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    builtin-validate-development-assets --validate YES_ERROR /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Preview\ Content
+
+MkDir /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_output/thinned (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    /bin/mkdir -p /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_output/thinned
+
+MkDir /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_output/unthinned (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    /bin/mkdir -p /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_output/unthinned
+
+GenerateAssetSymbols /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Preview\ Content/Preview\ Assets.xcassets /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Assets.xcassets (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Preview\ Content/Preview\ Assets.xcassets /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Assets.xcassets --compile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/nezu-app.app --output-format human-readable-text --notices --warnings --export-dependency-info /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_dependencies --output-partial-info-plist /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_generated_info.plist --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 17.0 --platform iphoneos --bundle-identifier com.example.nezu-app --generate-swift-asset-symbols /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+CompileAssetCatalogVariant thinned /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/nezu-app.app /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Preview\ Content/Preview\ Assets.xcassets /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Assets.xcassets (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Preview\ Content/Preview\ Assets.xcassets /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Assets.xcassets --compile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 17.0 --platform iphoneos
+/* com.apple.actool.compilation-results */
+/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_generated_info.plist_thinned
+
+
+SwiftDriver nezu-app normal arm64 com.apple.xcode.tools.swift.compiler (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    builtin-SwiftDriver -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name nezu_app -O -whole-module-optimization -enforce-exclusivity\=checked @/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -target arm64-apple-ios17.0 -g -module-cache-path /Users/runner/work/nezu-app/nezu-app/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos -F /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos -emit-localized-strings -emit-localized-strings-path /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64 -c -num-threads 3 -Xcc -ivfsstatcache -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -output-file-map /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu_app.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/nezu-app/nezu-app/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-generated-files.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-own-target-headers.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-project-headers.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/include -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu_app-Swift.h -working-directory /Users/runner/work/nezu-app/nezu-app/test-app -no-emit-module-separately-wmo
+
+SwiftCompile normal arm64 Compiling\ ContentView.swift,\ App.swift,\ VersionManager.swift,\ UpdateCheckView.swift,\ InfoView.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/ContentView.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/App.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/VersionManager.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/InfoView.swift /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'nezu-app' from project 'nezu-app')
+CompileSwift normal arm64 (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/ContentView.swift:177:10: error: invalid redeclaration of 'glassEffect(in:)'
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift:101:10: note: 'glassEffect(in:)' previously declared here
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift:101:10: note: 'glassEffect(in:)' previously declared here
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/ContentView.swift:25:34: error: ambiguous use of 'glassEffect(in:)'
+                                .glassEffect(in: Circle())
+                                 ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift:101:10: note: found this candidate 
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/InfoView.swift:116:10: note: found this candidate 
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/ContentView.swift:125:14: error: ambiguous use of 'glassEffect(in:)'
+            .glassEffect(in: RoundedRectangle(cornerRadius: 12))
+             ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift:101:10: note: found this candidate 
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/InfoView.swift:116:10: note: found this candidate 
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/ContentView.swift:179:30: error: type 'ShapeStyle' has no member 'glass'
+            self.background(.glass, in: shape)
+                            ~^~~~~
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift:101:10: error: invalid redeclaration of 'glassEffect(in:)'
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/InfoView.swift:116:10: note: 'glassEffect(in:)' previously declared here
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/InfoView.swift:116:10: note: 'glassEffect(in:)' previously declared here
+    func glassEffect<S: Shape>(in shape: S) -> some View {
+         ^
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift:103:30: error: type 'ShapeStyle' has no member 'glass'
+            self.background(.glass, in: shape)
+                            ~^~~~~
+/Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/InfoView.swift:118:30: error: type 'ShapeStyle' has no member 'glass'
+            self.background(.glass, in: shape)
+                            ~^~~~~
+
+Failed frontend command:
+/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/ContentView.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/App.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/VersionManager.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/InfoView.swift /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols.swift -supplementary-output-file-map /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/supplementaryOutputs-1 -emit-localized-strings -emit-localized-strings-path /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64 -target arm64-apple-ios17.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -I /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos -F /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos -no-color-diagnostics -g -debug-info-format\=dwarf -dwarf-version\=4 -module-cache-path /Users/runner/work/nezu-app/nezu-app/DerivedData/ModuleCache.noindex -swift-version 5 -enforce-exclusivity\=checked -O -serialize-debugging-options -const-gather-protocols-file /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/runner/work/nezu-app/nezu-app/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/runner/work/nezu-app/nezu-app/test-app -resource-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift -file-compilation-dir /Users/runner/work/nezu-app/nezu-app/test-app -Xcc -ivfsstatcache -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-generated-files.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-own-target-headers.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-project-headers.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/include -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources -module-name nezu_app -frontend-parseable-output -disable-clang-spi -target-sdk-version 18.5 -target-sdk-name iphoneos18.5 -external-plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins\#/Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server -external-plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/local/lib/swift/host/plugins\#/Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server -in-process-plugin-server-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins -plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/lib/swift/host/plugins -enable-default-cmo -num-threads 3 -o /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/ContentView.o -o /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/App.o -o /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/VersionManager.o -o /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/UpdateCheckView.o -o /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/InfoView.o -o /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/GeneratedAssetSymbols.o -index-unit-output-path /nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/ContentView.o -index-unit-output-path /nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/App.o -index-unit-output-path /nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/VersionManager.o -index-unit-output-path /nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/UpdateCheckView.o -index-unit-output-path /nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/InfoView.o -index-unit-output-path /nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/GeneratedAssetSymbols.o
+SwiftDriver\ Compilation nezu-app normal arm64 com.apple.xcode.tools.swift.compiler (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    builtin-Swift-Compilation -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name nezu_app -O -whole-module-optimization -enforce-exclusivity\=checked @/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -target arm64-apple-ios17.0 -g -module-cache-path /Users/runner/work/nezu-app/nezu-app/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos -F /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos -emit-localized-strings -emit-localized-strings-path /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64 -c -num-threads 3 -Xcc -ivfsstatcache -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -output-file-map /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu_app.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/nezu-app/nezu-app/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu-app_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-generated-files.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-own-target-headers.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/nezu-app-project-headers.hmap -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/include -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/Objects-normal/arm64/nezu_app-Swift.h -working-directory /Users/runner/work/nezu-app/nezu-app/test-app -no-emit-module-separately-wmo
+
+LinkAssetCatalog /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Preview\ Content/Preview\ Assets.xcassets /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Assets.xcassets (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    builtin-linkAssetCatalog --thinned /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_output/thinned --thinned-dependencies /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_generated_info.plist_unthinned --output /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/nezu-app.app --plist-output /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_generated_info.plist
+
+ProcessInfoPlistFile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/nezu-app.app/Info.plist /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Info.plist (in target 'nezu-app' from project 'nezu-app')
+    cd /Users/runner/work/nezu-app/nezu-app/test-app
+    builtin-infoPlistUtility /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/nezu-app.app/PkgInfo -expandbuildsettings -format binary -platform iphoneos -additionalcontentfile /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/assetcatalog_generated_info.plist -requiredArchitecture arm64 -o /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Products/Release-iphoneos/nezu-app.app/Info.plist
+
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'nezu-app' from project 'nezu-app')
+** BUILD FAILED **
+
+
+The following build commands failed:
+	CompileSwift normal arm64 (in target 'nezu-app' from project 'nezu-app')
+	SwiftCompile normal arm64 Compiling\ ContentView.swift,\ App.swift,\ VersionManager.swift,\ UpdateCheckView.swift,\ InfoView.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/ContentView.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/App.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/VersionManager.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/UpdateCheckView.swift /Users/runner/work/nezu-app/nezu-app/test-app/nezu-app/InfoView.swift /Users/runner/work/nezu-app/nezu-app/DerivedData/Build/Intermediates.noindex/nezu-app.build/Release-iphoneos/nezu-app.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'nezu-app' from project 'nezu-app')
+	Building project nezu-app with scheme nezu-app and configuration Release
+(3 failures)
