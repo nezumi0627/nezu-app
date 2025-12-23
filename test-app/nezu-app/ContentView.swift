@@ -74,9 +74,7 @@ struct ContentView: View {
                             StatusRow(label: "Build", value: versionManager.currentBuildString)
                             
                             #if os(iOS)
-                            if let systemVersion = UIDevice.current.systemVersion {
-                                StatusRow(label: "iOS Version", value: systemVersion)
-                            }
+                            StatusRow(label: "iOS Version", value: UIDevice.current.systemVersion)
                             StatusRow(label: "Device", value: UIDevice.current.model)
                             #endif
                             
@@ -242,12 +240,10 @@ struct LiquidBackground: View {
 extension View {
     @ViewBuilder
     func glassEffect<S: Shape>(in shape: S) -> some View {
-        if #available(iOS 18.0, *) {
-            // iOS 18.0+: Material.glassを直接使用
-            self.background(
-                Material.glass,
-                in: shape
-            )
+        // iOS 17.0+互換: .ultraThinMaterialを使用してglass効果を実現
+        // iOS 18.0の.glassはShapeStyleとして直接使用できないため、
+        // .ultraThinMaterialを使用してglass効果を再現
+        self.background(.ultraThinMaterial, in: shape)
             .overlay(
                 shape
                     .stroke(
@@ -263,51 +259,26 @@ extension View {
                     )
                     .blendMode(.overlay)
             )
-            .shadow(
-                color: .black.opacity(0.1),
-                radius: 8,
-                x: 0,
-                y: 4
+            .overlay(
+                shape
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                .white.opacity(0.1),
+                                .clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .blendMode(.overlay)
             )
-        } else {
-            // iOS 17.0: .ultraThinMaterialを使用してglass効果を再現
-            self.background(.ultraThinMaterial, in: shape)
-                .overlay(
-                    shape
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    .white.opacity(0.25),
-                                    .white.opacity(0.08)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 0.5
-                        )
-                        .blendMode(.overlay)
-                )
-                .overlay(
-                    shape
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    .white.opacity(0.1),
-                                    .clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .blendMode(.overlay)
-                )
-                .shadow(
-                    color: .black.opacity(0.08),
-                    radius: 6,
-                    x: 0,
-                    y: 3
-                )
-        }
+            .shadow(
+                color: .black.opacity(0.08),
+                radius: 6,
+                x: 0,
+                y: 3
+            )
     }
 }
 
