@@ -25,7 +25,7 @@ struct InfoView: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.white)
                     .padding(12)
-                    .glassEffect(in: .circle)
+                    .glassEffect(in: Circle())
                     .padding()
             }
         }
@@ -142,7 +142,7 @@ struct ProfileInfoCard: View {
             Spacer()
         }
         .padding(16)
-        .glassEffect(in: .rect(cornerRadius: 20))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 20))
         .glassShimmer(animate: true)
     }
 }
@@ -173,7 +173,7 @@ struct SocialLinkItem: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .glassEffect(in: .rect(cornerRadius: 20))
+            .glassEffect(in: RoundedRectangle(cornerRadius: 20))
         }
     }
 }

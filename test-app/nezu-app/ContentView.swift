@@ -124,7 +124,7 @@ struct ContentView: View {
                         ModernStatusRow(label: "Engine", value: "SwiftUI 6.0", icon: "cpu")
                     }
                     .background(.ultraThinMaterial)
-                    .glassEffect(in: .rect(cornerRadius: 24))
+                    .glassEffect(in: RoundedRectangle(cornerRadius: 24))
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
@@ -175,7 +175,7 @@ struct LiquidGlassButton: View {
             }
             .padding(20)
             .background(.ultraThinMaterial)
-            .glassEffect(in: .rect(cornerRadius: 28))
+            .glassEffect(in: RoundedRectangle(cornerRadius: 28))
             .glassShimmer(animate: true)
             .scaleEffect(isHovering ? 0.98 : 1.0)
         }
@@ -240,8 +240,15 @@ struct LiquidBackground: View {
 }
 
 extension View {
+    /// デフォルト形状のグラスエフェクト（カプセル）
     @ViewBuilder
-    func glassEffect(in shape: some Shape = .capsule) -> some View {
+    func glassEffect() -> some View {
+        glassEffect(in: Capsule())
+    }
+    
+    /// 任意の Shape を指定できるグラスエフェクト
+    @ViewBuilder
+    func glassEffect<S: Shape>(in shape: S) -> some View {
         if #available(iOS 18.0, visionOS 2.0, *) {
             self.background(.glass, in: shape)
                 .overlay(

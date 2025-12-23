@@ -32,7 +32,7 @@ struct UpdateCheckView: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.white)
                     .padding(12)
-                    .glassEffect(in: .circle)
+                    .glassEffect(in: Circle())
                     .padding()
             }
         }
@@ -144,7 +144,7 @@ struct PremiumLoadingView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
-        .glassEffect(in: .rect(cornerRadius: 32))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 32))
         .glassShimmer(animate: true)
     }
 }
@@ -183,7 +183,7 @@ struct PremiumUpdateCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
-        .glassEffect(in: .rect(cornerRadius: 32))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 32))
         .glassShimmer(animate: true)
     }
 }
@@ -228,7 +228,7 @@ struct PremiumErrorView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 30)
-        .glassEffect(in: .rect(cornerRadius: 32))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 32))
         .glassShimmer(animate: true)
     }
 }
