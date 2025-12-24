@@ -45,10 +45,29 @@ jobs:
           echo "Xcode path: $(xcode-select -p)" | tee -a workflow.log
         continue-on-error: true
 
-      - name: Show Xcode version
+      - name: Show Xcode version and SDK info
+        id: xcode_info
         run: |
           echo "=== Xcode Version ===" | tee -a workflow.log
-          xcodebuild -version | tee -a workflow.log
+          XCODE_VERSION=$(xcodebuild -version | head -n 1)
+          XCODE_BUILD=$(xcodebuild -version | tail -n 1)
+          echo "$XCODE_VERSION" | tee -a workflow.log
+          echo "$XCODE_BUILD" | tee -a workflow.log
+          echo "XCODE_VERSION=$XCODE_VERSION" >> $GITHUB_ENV
+          echo "XCODE_BUILD=$XCODE_BUILD" >> $GITHUB_ENV
+          echo "XCODE_VERSION_OUTPUT=$XCODE_VERSION" >> $GITHUB_OUTPUT
+          echo "XCODE_BUILD_OUTPUT=$XCODE_BUILD" >> $GITHUB_OUTPUT
+          
+          echo "" | tee -a workflow.log
+          echo "=== Available SDKs ===" | tee -a workflow.log
+          xcodebuild -showsdks | tee -a workflow.log
+          
+          echo "" | tee -a workflow.log
+          echo "=== iOS SDK Version ===" | tee -a workflow.log
+          IOS_SDK_VERSION=$(xcodebuild -showsdks | grep -i "iphoneos" | head -n 1 | sed 's/.*-sdk iphoneos\([0-9.]*\).*/\1/' || echo "unknown")
+          echo "iOS SDK: $IOS_SDK_VERSION" | tee -a workflow.log
+          echo "IOS_SDK_VERSION=$IOS_SDK_VERSION" >> $GITHUB_ENV
+          echo "IOS_SDK_VERSION_OUTPUT=$IOS_SDK_VERSION" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Set build start time
@@ -350,10 +369,23 @@ jobs:
 
           {
             echo "=== Xcode / SDK Info ==="
+            echo "Xcode Version: ${{ env.XCODE_VERSION }}"
+            echo "Xcode Build: ${{ env.XCODE_BUILD }}"
+            echo "iOS SDK Version: ${{ env.IOS_SDK_VERSION }}"
+            echo
             xcodebuild -version || true
             echo
             echo "=== Available SDKs ==="
             xcodebuild -showsdks || true
+            echo
+            echo "=== SDK Paths ==="
+            xcodebuild -version -sdk iphoneos Path 2>/dev/null || echo "SDK path not available"
+            echo
+            echo "=== Swift Version ==="
+            swift --version || true
+            echo
+            echo "=== Xcode Select Path ==="
+            xcode-select -p || true
           } > runner-xcode-info.txt
 
           # ビルド時間計算
@@ -370,9 +402,11 @@ jobs:
           echo "Generating commit list..." | tee -a workflow.log
           git log -10 --pretty=format:'- `%h` %ad **%an**: %s' --date=short > commit-list.md
 
-          # タグ名は後でリリース作成後に実際のタグ名を取得する
-          # 一時的な値として設定（後で更新される）
-          TAG_NAME="untagged-temp"
+          # タグ名を環境変数から取得（既に生成済み）
+          TAG_NAME="${{ env.TAG_NAME }}"
+          if [ -z "$TAG_NAME" ]; then
+            TAG_NAME="build-${{ github.run_number }}-$(echo "${{ github.sha }}" | cut -c1-7)"
+          fi
           RELEASE_URL="https://github.com/${{ github.repository }}/releases"
 
           cat > release-body.md << 'EOF'
@@ -393,7 +427,15 @@ jobs:
           - **Image OS**: __IMAGE_OS__
           - **Image Version**: __IMAGE_VERSION__
 
+          ### Build Environment
+
+          - **Xcode Version**: __XCODE_VERSION__
+          - **Xcode Build**: __XCODE_BUILD__
+          - **iOS SDK Version**: __IOS_SDK_VERSION__
+          - **Swift Version**: __SWIFT_VERSION__
+
           - **Release URL**: [GitHub Release](__RELEASE_URL__)
+          - **Tag**: `__TAG_NAME__`
 
           ### Commits included in this build (latest 10)
 
@@ -409,6 +451,12 @@ jobs:
 
           COMMITS_CONTENT=$(cat commit-list.md)
 
+          # Xcode/SDK情報を取得
+          XCODE_VERSION="${{ env.XCODE_VERSION }}"
+          XCODE_BUILD="${{ env.XCODE_BUILD }}"
+          IOS_SDK_VERSION="${{ env.IOS_SDK_VERSION }}"
+          SWIFT_VERSION=$(swift --version | head -n 1 || echo "unknown")
+          
           perl -pi -e "s#__BUILD_DURATION__#$BUILD_DURATION#g" release-body.md
           perl -pi -e "s#__IPA_SIZE_HUMAN__#$IPA_SIZE_HUMAN#g" release-body.md
           perl -pi -e "s#__IPA_SIZE_BYTES__#$IPA_SIZE_BYTES#g" release-body.md
@@ -417,6 +465,11 @@ jobs:
           perl -pi -e "s#__RUNNER_ARCH__#$RUNNER_ARCH#g" release-body.md
           perl -pi -e "s#__IMAGE_OS__#$IMAGE_OS#g" release-body.md
           perl -pi -e "s#__IMAGE_VERSION__#$IMAGE_VERSION#g" release-body.md
+          perl -pi -e "s#__XCODE_VERSION__#$XCODE_VERSION#g" release-body.md
+          perl -pi -e "s#__XCODE_BUILD__#$XCODE_BUILD#g" release-body.md
+          perl -pi -e "s#__IOS_SDK_VERSION__#$IOS_SDK_VERSION#g" release-body.md
+          perl -pi -e "s#__SWIFT_VERSION__#$SWIFT_VERSION#g" release-body.md
+          perl -pi -e "s#__TAG_NAME__#$TAG_NAME#g" release-body.md
           perl -pi -e "s#__RELEASE_URL__#$RELEASE_URL#g" release-body.md
           perl -0pi -e 's#__COMMITS__#'"$COMMITS_CONTENT"'#g' release-body.md
 
@@ -432,6 +485,12 @@ jobs:
               "arch": "$RUNNER_ARCH",
               "image_os": "$IMAGE_OS",
               "image_version": "$IMAGE_VERSION"
+            },
+            "build_environment": {
+              "xcode_version": "${{ env.XCODE_VERSION }}",
+              "xcode_build": "${{ env.XCODE_BUILD }}",
+              "ios_sdk_version": "${{ env.IOS_SDK_VERSION }}",
+              "swift_version": "$(swift --version | head -n 1 || echo 'unknown')"
             },
             "tag_name": "$TAG_NAME",
             "release_url": "$RELEASE_URL",
@@ -501,11 +560,21 @@ jobs:
         env:
           IPA_NAME: ${{ env.IPA_NAME }}
 
+      - name: Generate tag name
+        id: tag_name
+        run: |
+          cd ${{ github.workspace }}
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          TAG_NAME="build-${{ github.run_number }}-${SHORT_SHA}"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Generated tag name: $TAG_NAME" | tee -a workflow.log
+
       - name: Upload IPA to Release
         id: release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ""  # 空にすることで、自動的にuntagged-形式のタグが作成される
+          tag_name: ${{ env.TAG_NAME }}
           name: "Build #${{ github.run_number }} - ${{ github.sha }}"
           body_path: release-body.md
           draft: true
@@ -695,6 +764,14 @@ jobs:
             echo "- **IPA Size**: \`${IPA_SIZE_HUMAN}\` (\`${IPA_SIZE_BYTES}\` bytes)"
             echo "- **IPA SHA256**: \`\`${IPA_SHA256}\`\`"
             echo "- **Runner**: \`${RUNNER_OS}\` (\`${RUNNER_ARCH}\`)"
+            echo ""
+            echo "## 🔧 Build Environment"
+            echo ""
+            echo "- **Xcode Version**: \`${{ env.XCODE_VERSION }}\`"
+            echo "- **Xcode Build**: \`${{ env.XCODE_BUILD }}\`"
+            echo "- **iOS SDK Version**: \`${{ env.IOS_SDK_VERSION }}\`"
+            echo "- **Swift Version**: \`$(swift --version | head -n 1 || echo 'unknown')\`"
+            echo "- **Tag**: \`${{ env.TAG_NAME }}\`"
             echo ""
             echo "## 📝 What's Included"
             echo ""
