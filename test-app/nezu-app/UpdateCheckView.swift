@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct UpdateCheckView: View {
     @StateObject private var versionManager = VersionManager()
@@ -110,7 +113,7 @@ struct UpdateAvailableView: View {
     @ObservedObject var versionManager: VersionManager
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Text("Update Available")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.secondary)
@@ -132,7 +135,12 @@ struct UpdateAvailableView: View {
                     .font(.system(size: 12, weight: .regular))
                     .foregroundStyle(.tertiary)
                 
-                Button(action: { versionManager.downloadIPA() }) {
+                Button {
+                    #if os(iOS)
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    #endif
+                    versionManager.downloadIPA()
+                } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.down.circle")
                             .symbolVariant(.none)
@@ -148,8 +156,8 @@ struct UpdateAvailableView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-        .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.vertical, 28)
+        .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 
