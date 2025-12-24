@@ -3,89 +3,92 @@ import SwiftUI
 import UIKit
 #endif
 
+/// Updatesタブ用のLiquid Glass UI
 struct UpdateCheckView: View {
     @StateObject private var versionManager = VersionManager()
-    @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(hex: "020617").ignoresSafeArea()
-                LiquidBackground()
-                
-                ScrollView {
+        ScrollView {
+            GlassEffectContainer {
+                VStack(spacing: 20) {
+                    // ヘッダー
                     GlassEffectContainer {
-                        VStack(spacing: 20) {
-                            // Header
-                            VStack(spacing: 16) {
-                                Image(systemName: "arrow.up.circle")
-                                    .font(.system(size: 28, weight: .regular))
-                                    .symbolVariant(.none)
+                        VStack(spacing: 10) {
+                            Image(systemName: "arrow.up.circle")
+                                .font(.system(size: 26, weight: .regular))
+                                .foregroundStyle(.primary)
+                                .frame(width: 52, height: 52)
+                                .glassEffect(.interactive, in: Circle())
+                            
+                            VStack(spacing: 2) {
+                                Text("Software Update")
+                                    .font(.system(size: 20, weight: .semibold))
                                     .foregroundStyle(.primary)
-                                    .frame(width: 56, height: 56)
-                                    .glassEffect(.interactive, in: Circle())
                                 
-                                VStack(spacing: 4) {
-                                    Text("Software Update")
-                                        .font(.system(size: 24, weight: .semibold))
-                                        .foregroundStyle(.primary)
-                                    
-                                    Text(versionManager.isLoading ? "Checking for updates..." : "Update Status")
-                                        .font(.system(size: 14, weight: .regular))
-                                        .foregroundStyle(.secondary)
-                                }
+                                Text(versionManager.isLoading ? "Checking for updates..." : "Latest release status")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundStyle(.secondary)
                             }
-                            .padding(.top, 32)
-                            
-                            // Status
-                            VStack {
-                                if versionManager.isLoading {
-                                    LoadingView()
-                                } else if let error = versionManager.errorMessage {
-                                    ErrorView(message: error)
-                                } else if versionManager.updateAvailable {
-                                    UpdateAvailableView(versionManager: versionManager)
-                                } else {
-                                    UpToDateView(versionManager: versionManager)
-                                }
+                        }
+                        .padding(.vertical, 18)
+                    }
+                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 18))
+                    
+                    // 状態カード
+                    GlassEffectContainer {
+                        VStack {
+                            if versionManager.isLoading {
+                                LoadingView()
+                            } else if let error = versionManager.errorMessage {
+                                ErrorView(message: error)
+                            } else if versionManager.updateAvailable {
+                                UpdateAvailableView(versionManager: versionManager)
+                            } else {
+                                UpToDateView(versionManager: versionManager)
                             }
-                            .padding(.horizontal, 20)
-                            
-                            // Refresh button
-                            Button(action: { versionManager.checkForUpdates() }) {
-                                HStack {
+                        }
+                        .padding(16)
+                    }
+                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 18))
+                    
+                    // アクションボタン
+                    GlassEffectContainer {
+                        VStack(spacing: 10) {
+                            Button {
+                                #if os(iOS)
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                #endif
+                                versionManager.checkForUpdates()
+                            } label: {
+                                HStack(spacing: 8) {
                                     if versionManager.isLoading {
                                         ProgressView()
                                             .tint(.primary)
                                     }
-                                    Text(versionManager.isLoading ? "Checking..." : "Refresh")
-                                        .font(.system(size: 16, weight: .medium))
+                                    Text(versionManager.isLoading ? "Checking..." : "Check Again")
+                                        .font(.system(size: 14, weight: .medium))
                                 }
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
+                                .padding(.vertical, 10)
                             }
+                            .buttonStyle(.plain)
                             .disabled(versionManager.isLoading)
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 40)
-                            .contentShape(RoundedRectangle(cornerRadius: 16))
+                            .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 14))
+                            
+                            Text("Checks the latest draft or published release on GitHub and compares it with the current app version.")
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
+                        .padding(14)
                     }
+                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 18))
+                    
+                    Spacer(minLength: 32)
                 }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 15, weight: .medium))
-                            .symbolVariant(.none)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 32, height: 32)
-                            .glassEffect(.interactive, in: Circle())
-                    }
-                    .contentShape(Circle())
-                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 40)
             }
         }
         .onAppear {
