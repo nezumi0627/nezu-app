@@ -2,851 +2,204 @@ name: Build Unsigned IPA
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: macos-latest
-    permissions:
-      contents: write  # Releaseを作成するために必要
 
     steps:
-      # ============================================================================
-      # Setup & Preparation
-      # ============================================================================
-
+      # =========================================================
+      # Checkout
+      # =========================================================
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 全履歴を取得（コミット一覧用）
+          fetch-depth: 1
 
-      - name: Initialize log files
-        run: |
-          # ログファイルを初期化
-          echo "=== Workflow Started ===" > workflow.log
-          echo "Timestamp: $(date -u)" >> workflow.log
-          echo "Repository: ${{ github.repository }}" >> workflow.log
-          echo "Commit: ${{ github.sha }}" >> workflow.log
-          echo "Branch: ${{ github.ref_name }}" >> workflow.log
-          echo "Run ID: ${{ github.run_id }}" >> workflow.log
-          echo "" >> workflow.log
-          
-          # その他のログファイルも初期化
-          echo "=== Build Log Started ===" > build.log
-          echo "=== IPA Creation Log Started ===" > ipa-creation.log
-          echo "=== Verification Log Started ===" > verification.log
-
-      - name: Setup Xcode 26.1
+      # =========================================================
+      # Xcode
+      # =========================================================
+      - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26.1'
-        continue-on-error: false
+          xcode-version: "26.1"
 
-      - name: Verify Xcode version
+      - name: Xcode info
         run: |
-          echo "=== Xcode Setup Verification ===" | tee -a workflow.log
-          echo "Xcode path: $(xcode-select -p)" | tee -a workflow.log
-          xcodebuild -version | tee -a workflow.log
-          echo "" | tee -a workflow.log
-          echo "=== Available Xcode versions ===" | tee -a workflow.log
-          ls -la /Applications/ | grep -i xcode | tee -a workflow.log || true
-        continue-on-error: false
+          xcodebuild -version
+          xcode-select -p
+          swift --version || true
 
-      - name: Show Xcode version and SDK info
-        id: xcode_info
+      # =========================================================
+      # Cache
+      # =========================================================
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: DerivedData
+          key: deriveddata-${{ runner.os }}
+          restore-keys: |
+            deriveddata-
+
+      # =========================================================
+      # Build
+      # =========================================================
+      - name: Build unsigned app
         run: |
-          echo "=== Xcode Version ===" | tee -a workflow.log
-          XCODE_VERSION=$(xcodebuild -version | head -n 1)
-          XCODE_BUILD=$(xcodebuild -version | tail -n 1)
-          echo "$XCODE_VERSION" | tee -a workflow.log
-          echo "$XCODE_BUILD" | tee -a workflow.log
-          echo "XCODE_VERSION=$XCODE_VERSION" >> $GITHUB_ENV
-          echo "XCODE_BUILD=$XCODE_BUILD" >> $GITHUB_ENV
-          echo "XCODE_VERSION_OUTPUT=$XCODE_VERSION" >> $GITHUB_OUTPUT
-          echo "XCODE_BUILD_OUTPUT=$XCODE_BUILD" >> $GITHUB_OUTPUT
-          
-          echo "" | tee -a workflow.log
-          echo "=== Available SDKs ===" | tee -a workflow.log
-          xcodebuild -showsdks | tee -a workflow.log
-          
-          echo "" | tee -a workflow.log
-          echo "=== iOS SDK Version ===" | tee -a workflow.log
-          IOS_SDK_VERSION=$(xcodebuild -showsdks | grep -i "iphoneos" | head -n 1 | sed 's/.*-sdk iphoneos\([0-9.]*\).*/\1/' || echo "unknown")
-          echo "iOS SDK: $IOS_SDK_VERSION" | tee -a workflow.log
-          echo "IOS_SDK_VERSION=$IOS_SDK_VERSION" >> $GITHUB_ENV
-          echo "IOS_SDK_VERSION_OUTPUT=$IOS_SDK_VERSION" >> $GITHUB_OUTPUT
-        continue-on-error: true
+          set -euxo pipefail
+          cd test-app
 
-      - name: Set build start time
-        run: |
-          BUILD_START=$(date -u +%s)
-          echo "BUILD_START=$BUILD_START" >> $GITHUB_ENV
-          echo "Build started at: $(date -u)" | tee -a workflow.log
-
-      # ============================================================================
-      # Project Discovery
-      # ============================================================================
-
-      - name: List available schemes
-        run: |
-          cd test-app || { echo "ERROR: Failed to change directory to test-app" | tee -a ../workflow.log; exit 1; }
-          echo "=== Available Schemes ===" | tee -a ../workflow.log
-          if [ -f "*.xcworkspace" ]; then
-            xcodebuild -list -workspace *.xcworkspace | tee -a ../workflow.log || { echo "ERROR: Failed to list workspace schemes" | tee -a ../workflow.log; exit 1; }
-          elif [ -d "nezu-app.xcodeproj" ]; then
-            xcodebuild -list -project nezu-app.xcodeproj | tee -a ../workflow.log || { echo "ERROR: Failed to list project schemes" | tee -a ../workflow.log; exit 1; }
+          if ls *.xcworkspace >/dev/null 2>&1; then
+            TARGET_TYPE="workspace"
+            TARGET_FILE=$(ls *.xcworkspace | head -n1)
+            SCHEME=$(xcodebuild -list -workspace "$TARGET_FILE" | awk '/Schemes:/ {getline; print}')
+            TARGET_ARGS=(-workspace "$TARGET_FILE")
           else
-            echo "ERROR: No Xcode project or workspace found" | tee -a ../workflow.log
-            ls -la | tee -a ../workflow.log
-            exit 1
+            TARGET_TYPE="project"
+            TARGET_FILE="nezu-app.xcodeproj"
+            SCHEME=$(xcodebuild -list -project "$TARGET_FILE" | awk '/Schemes:/ {getline; print}')
+            TARGET_ARGS=(-project "$TARGET_FILE")
           fi
-        continue-on-error: false
 
-      # ============================================================================
-      # Build Process
-      # ============================================================================
+          echo "Target: $TARGET_TYPE $TARGET_FILE"
+          echo "Scheme: $SCHEME"
 
-      - name: Build (unsigned)
-        run: |
-          cd test-app || exit 1
-          echo "=== Starting Build ===" | tee -a ../workflow.log
-          echo "Timestamp: $(date -u)" | tee -a ../workflow.log
-          
-          # プロジェクトファイルを検索
-          if [ -f *.xcworkspace ]; then
-            WORKSPACE=$(ls *.xcworkspace | head -n 1)
-            SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" | grep -A 1 "Schemes:" | tail -n 1 | xargs)
-            echo "Using workspace: $WORKSPACE" | tee -a ../workflow.log
-            echo "Using scheme: $SCHEME" | tee -a ../workflow.log
-            
-            xcodebuild \
-              -workspace "$WORKSPACE" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -derivedDataPath ../DerivedData \
-              CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ENTITLEMENTS="" \
-              build 2>&1 | tee ../build.log
-            
-            BUILD_EXIT_CODE=${PIPESTATUS[0]}
-            if [ $BUILD_EXIT_CODE -ne 0 ]; then
-              echo "ERROR: Build failed with exit code: $BUILD_EXIT_CODE" | tee -a ../workflow.log
-              echo "ERROR: Build log saved to build.log" | tee -a ../workflow.log
-              exit $BUILD_EXIT_CODE
-            fi
-            
-          elif [ -d nezu-app.xcodeproj ]; then
-            PROJECT="nezu-app.xcodeproj"
-            SCHEME=$(xcodebuild -list -project "$PROJECT" | grep -A 1 "Schemes:" | tail -n 1 | xargs)
-            echo "Using project: $PROJECT" | tee -a ../workflow.log
-            echo "Using scheme: $SCHEME" | tee -a ../workflow.log
-            
-            xcodebuild \
-              -project "$PROJECT" \
-              -scheme "$SCHEME" \
-              -configuration Release \
-              -sdk iphoneos \
-              -derivedDataPath ../DerivedData \
-              CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ENTITLEMENTS="" \
-              build 2>&1 | tee -a ../build.log
-            
-            BUILD_EXIT_CODE=${PIPESTATUS[0]}
-            if [ $BUILD_EXIT_CODE -ne 0 ]; then
-              echo "ERROR: Build failed with exit code: $BUILD_EXIT_CODE" | tee -a ../workflow.log
-              echo "ERROR: Build log saved to build.log" | tee -a ../workflow.log
-              exit $BUILD_EXIT_CODE
-            fi
-          else
-            echo "ERROR: No Xcode project or workspace found" | tee -a ../workflow.log
-            ls -la | tee -a ../workflow.log
-            exit 1
-          fi
-          
-          echo "=== Build Completed Successfully ===" | tee -a ../workflow.log
-          echo "Timestamp: $(date -u)" | tee -a ../workflow.log
+          xcodebuild \
+            "${TARGET_ARGS[@]}" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ../DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ONLY_ACTIVE_ARCH=YES \
+            -quiet \
+            build
 
-      # ============================================================================
-      # App Discovery & IPA Creation
-      # ============================================================================
-
-      - name: Find built app
+      # =========================================================
+      # Find App
+      # =========================================================
+      - name: Locate .app
         id: find_app
         run: |
-          cd ${{ github.workspace }}
-          echo "=== Searching for .app file ===" | tee -a workflow.log
-          
-          # DerivedDataから.appファイルを検索
-          APP_PATH=$(find ./DerivedData -name "*.app" -type d | grep -i "Release-iphoneos" | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find ./DerivedData -name "*.app" -type d | head -n 1)
-          fi
-          
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: .app file not found" | tee -a workflow.log
-            echo "Searching in DerivedData:" | tee -a workflow.log
-            find ./DerivedData -type d -name "*.app" | tee -a workflow.log || true
-            echo "DerivedData contents:" | tee -a workflow.log
-            ls -la ./DerivedData | tee -a workflow.log || true
-            exit 1
-          fi
-          
-          # 絶対パスに変換
-          APP_PATH=$(cd "$(dirname "$APP_PATH")" && pwd)/$(basename "$APP_PATH")
-          
+          set -e
+          APP_PATH=$(find DerivedData -name "*.app" | head -n1)
           echo "APP_PATH=$APP_PATH" >> $GITHUB_OUTPUT
-          echo "Found app at: $APP_PATH" | tee -a workflow.log
-          ls -la "$APP_PATH" | tee -a workflow.log
+          echo "Found app: $APP_PATH"
 
-      - name: Extract app name
-        id: app_name
-        run: |
-          APP_NAME=$(basename "${{ steps.find_app.outputs.APP_PATH }}" .app)
-          echo "APP_NAME=$APP_NAME" >> $GITHUB_OUTPUT
-          echo "App name: $APP_NAME" | tee -a workflow.log
-
+      # =========================================================
+      # Create IPA
+      # =========================================================
       - name: Create IPA
+        id: create_ipa
         run: |
-          cd ${{ github.workspace }}
-          echo "=== IPA Creation Process ===" | tee -a workflow.log
-          echo "Timestamp: $(date -u)" | tee -a workflow.log
-          
-          # 一時ディレクトリを作成
-          TEMP_DIR=$(mktemp -d)
-          echo "Temporary directory: $TEMP_DIR" | tee -a workflow.log
-          
-          # Payloadフォルダを作成
-          mkdir -p "$TEMP_DIR/Payload"
-          
-          # .appファイルをPayloadフォルダにコピー
-          APP_NAME=$(basename "${{ steps.find_app.outputs.APP_PATH }}")
-          echo "Copying .app to Payload..." | tee -a workflow.log
-          cp -R "${{ steps.find_app.outputs.APP_PATH }}" "$TEMP_DIR/Payload/" 2>&1 | tee -a ipa-creation.log
-          
-          # コピーが成功したか確認
-          if [ ! -d "$TEMP_DIR/Payload/$APP_NAME" ]; then
-            echo "ERROR: Failed to copy .app to Payload" | tee -a workflow.log | tee -a ipa-creation.log
-            echo "ERROR: Source: ${{ steps.find_app.outputs.APP_PATH }}" | tee -a workflow.log | tee -a ipa-creation.log
-            echo "ERROR: Destination: $TEMP_DIR/Payload/$APP_NAME" | tee -a workflow.log | tee -a ipa-creation.log
-            ls -la "$TEMP_DIR/Payload/" | tee -a workflow.log | tee -a ipa-creation.log || true
-            exit 1
-          fi
-          
-          echo "Payload structure:" | tee -a ipa-creation.log
-          ls -la "$TEMP_DIR/Payload/" | tee -a ipa-creation.log
-          echo "App contents:" | tee -a ipa-creation.log
-          ls -la "$TEMP_DIR/Payload/$APP_NAME/" | head -10 | tee -a ipa-creation.log
-          
-          # IPAファイル名を設定（一意になるようにビルド番号とコミットハッシュを含める）
+          set -e
+          APP_PATH="${{ steps.find_app.outputs.APP_PATH }}"
+          APP_NAME=$(basename "$APP_PATH" .app)
+
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          IPA_NAME="${{ steps.app_name.outputs.APP_NAME }}-unsigned-build${{ github.run_number }}-${SHORT_SHA}.ipa"
-          IPA_PATH="${{ github.workspace }}/$IPA_NAME"
-          
-          echo "IPA name: $IPA_NAME" | tee -a workflow.log
-          echo "IPA path: $IPA_PATH" | tee -a workflow.log
-          
-          # 既存のIPAファイルがあれば削除
-          rm -f "$IPA_PATH"
-          
-          # Payloadフォルダを含めてzipファイルを作成
-          echo "Creating IPA archive..." | tee -a ipa-creation.log
-          cd "$TEMP_DIR"
-          zip -r "$IPA_PATH" Payload -x "*.DS_Store" "*.git*" "*.swp" "*.swo" 2>&1 | tee -a ipa-creation.log
-          
-          # 作業ディレクトリを戻す
-          cd ${{ github.workspace }}
-          
-          # IPAファイルが作成されたか確認
-          if [ ! -f "$IPA_PATH" ]; then
-            echo "ERROR: Failed to create IPA file" | tee -a workflow.log | tee -a ipa-creation.log
-            echo "ERROR: IPA creation log saved to ipa-creation.log" | tee -a workflow.log
-            exit 1
-          fi
-          
-          echo "IPA file created successfully" | tee -a workflow.log
-          ls -lh "$IPA_PATH" | tee -a ipa-creation.log
-          
-          # 一時ディレクトリをクリーンアップ
-          rm -rf "$TEMP_DIR"
-          
+          IPA_NAME="${APP_NAME}-unsigned-${{ github.run_number }}-${SHORT_SHA}.ipa"
+
+          zip -qr "$IPA_NAME" Payload
           echo "IPA_NAME=$IPA_NAME" >> $GITHUB_ENV
+          echo "Created $IPA_NAME"
 
-      # ============================================================================
-      # IPA Verification
-      # ============================================================================
-
-      - name: Verify IPA file before upload
-        id: verify_ipa
+      # =========================================================
+      # Verify IPA
+      # =========================================================
+      - name: Verify IPA
         run: |
-          cd ${{ github.workspace }}
-          echo "=== IPA Verification ===" | tee -a workflow.log
-          
-          if [ ! -f "${{ env.IPA_NAME }}" ]; then
-            echo "ERROR: IPA file not found: ${{ env.IPA_NAME }}" | tee -a workflow.log | tee -a verification.log
-            echo "ERROR: Current directory: $(pwd)" | tee -a workflow.log | tee -a verification.log
-            echo "ERROR: Files in workspace:" | tee -a workflow.log | tee -a verification.log
-            ls -la | tee -a workflow.log | tee -a verification.log || true
-            echo "ERROR: IPA files:" | tee -a workflow.log | tee -a verification.log
-            ls -la *.ipa | tee -a workflow.log | tee -a verification.log || true
-            exit 1
-          fi
-          
-          echo "IPA file ready: ${{ env.IPA_NAME }}" | tee -a workflow.log
-          ls -lh "${{ env.IPA_NAME }}" | tee -a verification.log
-          echo "" | tee -a verification.log
-          
-          echo "=== IPA file structure verification ===" | tee -a verification.log
-          echo "First 30 lines of IPA contents:" | tee -a verification.log
-          unzip -l "${{ env.IPA_NAME }}" | head -30 | tee -a verification.log
-          echo "" | tee -a verification.log
-          
-          echo "Checking for Payload folder:" | tee -a verification.log
-          if unzip -l "${{ env.IPA_NAME }}" | grep -q "^.*Payload/"; then
-            echo "✓ Payload folder found in IPA" | tee -a verification.log
-          else
-            echo "✗ ERROR: Payload folder NOT found in IPA" | tee -a verification.log | tee -a workflow.log
-            echo "ERROR: Full contents:" | tee -a verification.log | tee -a workflow.log
-            unzip -l "${{ env.IPA_NAME }}" | tee -a verification.log | tee -a workflow.log
-            exit 1
-          fi
-          
-          echo "" | tee -a verification.log
-          echo "Checking for .app in Payload:" | tee -a verification.log
-          if unzip -l "${{ env.IPA_NAME }}" | grep -q "^.*Payload/.*\.app/"; then
-            echo "✓ .app found in Payload folder" | tee -a verification.log
-          else
-            echo "✗ ERROR: .app NOT found in Payload folder" | tee -a verification.log | tee -a workflow.log
-            echo "ERROR: Verification log saved to verification.log" | tee -a workflow.log
-            exit 1
-          fi
-          
-          echo "IPA_FILE_PATH=${{ github.workspace }}/${{ env.IPA_NAME }}" >> $GITHUB_OUTPUT
+          unzip -l "$IPA_NAME" | grep Payload
 
-      # ============================================================================
-      # Metadata Generation
-      # ============================================================================
-
-      - name: Generate release body and metadata
-        id: generate_metadata
+      # =========================================================
+      # Metadata
+      # =========================================================
+      - name: Generate metadata
         run: |
-          cd ${{ github.workspace }}
-          echo "=== Generating Metadata ===" | tee -a workflow.log
-          
-          IPA_FILE="${{ github.workspace }}/${{ env.IPA_NAME }}"
+          set -e
+          IPA="$IPA_NAME"
 
-          # IPAサイズ・ハッシュ
-          echo "Calculating IPA checksum..." | tee -a workflow.log
-          IPA_SIZE_BYTES=$(stat -f%z "$IPA_FILE")
-          IPA_SIZE_HUMAN=$(du -h "$IPA_FILE" | cut -f1)
-          IPA_SHA256=$(shasum -a 256 "$IPA_FILE" | awk '{print $1}')
-          
-          echo "IPA Size: $IPA_SIZE_HUMAN ($IPA_SIZE_BYTES bytes)" | tee -a workflow.log
-          echo "IPA SHA256: $IPA_SHA256" | tee -a workflow.log
+          SIZE_BYTES=$(stat -f%z "$IPA")
+          SIZE_HUMAN=$(du -h "$IPA" | cut -f1)
+          SHA256=$(shasum -a 256 "$IPA" | awk '{print $1}')
 
-          # Runner / イメージ情報
-          RUNNER_OS="${RUNNER_OS}"
-          RUNNER_ARCH="${RUNNER_ARCH:-unknown}"
-          IMAGE_OS="${ImageOS:-unknown}"
-          IMAGE_VERSION="${ImageVersion:-unknown}"
+          echo "IPA_SIZE_BYTES=$SIZE_BYTES" >> $GITHUB_ENV
+          echo "IPA_SIZE_HUMAN=$SIZE_HUMAN" >> $GITHUB_ENV
+          echo "IPA_SHA256=$SHA256" >> $GITHUB_ENV
 
-          # Runnerの詳細情報をファイルに出力（後でアーティファクトとして保存）
-          {
-            echo "=== Runner Basic Info ==="
-            echo "RUNNER_OS=$RUNNER_OS"
-            echo "RUNNER_ARCH=$RUNNER_ARCH"
-            echo "ImageOS=$IMAGE_OS"
-            echo "ImageVersion=$IMAGE_VERSION"
-            echo
-            echo "=== uname -a ==="
-            uname -a || true
-            echo
-            echo "=== sw_vers ==="
-            sw_vers || true
-          } > runner-system-info.txt
+          git log -10 --pretty=format:'- `%h` %s' > commits.md
 
-          {
-            echo "=== Environment Variables (sorted) ==="
-            env | sort
-          } > runner-env.txt
-
-          {
-            echo "=== Xcode / SDK Info ==="
-            echo "Xcode Version: ${{ env.XCODE_VERSION }}"
-            echo "Xcode Build: ${{ env.XCODE_BUILD }}"
-            echo "iOS SDK Version: ${{ env.IOS_SDK_VERSION }}"
-            echo
-            xcodebuild -version || true
-            echo
-            echo "=== Available SDKs ==="
-            xcodebuild -showsdks || true
-            echo
-            echo "=== SDK Paths ==="
-            xcodebuild -version -sdk iphoneos Path 2>/dev/null || echo "SDK path not available"
-            echo
-            echo "=== Swift Version ==="
-            swift --version || true
-            echo
-            echo "=== Xcode Select Path ==="
-            xcode-select -p || true
-          } > runner-xcode-info.txt
-
-          # ビルド時間計算
-          END_TS=$(date -u +%s)
-          DURATION_SEC=$((END_TS - BUILD_START))
-          H=$((DURATION_SEC / 3600))
-          M=$(((DURATION_SEC % 3600) / 60))
-          S=$((DURATION_SEC % 60))
-          BUILD_DURATION=$(printf "%02d:%02d:%02d" "$H" "$M" "$S")
-          echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
-          echo "Build duration: $BUILD_DURATION ($DURATION_SEC seconds)" | tee -a workflow.log
-
-          # コミット一覧（最新10件）
-          echo "Generating commit list..." | tee -a workflow.log
-          git log -10 --pretty=format:'- `%h` %ad **%an**: %s' --date=short > commit-list.md
-
-          # タグ名を環境変数から取得（既に生成済み）
-          TAG_NAME="${{ env.TAG_NAME }}"
-          if [ -z "$TAG_NAME" ]; then
-            TAG_NAME="build-${{ github.run_number }}-$(echo "${{ github.sha }}" | cut -c1-7)"
-          fi
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases"
-
-          cat > release-body.md << 'EOF'
+          cat > release-body.md <<EOF
           ## Unsigned IPA Build
 
-          - **Commit**: `${{ github.sha }}`
-          - **Branch**: `${{ github.ref_name }}`
-          - **Workflow**: `${{ github.workflow }}`
+          - **Commit**: \`${{ github.sha }}\`
+          - **Branch**: \`${{ github.ref_name }}\`
           - **Run**: #${{ github.run_number }}
-          - **Build Duration (hh:mm:ss)**: __BUILD_DURATION__
-          - **IPA File**: `${{ env.IPA_NAME }}`
-          - **IPA Size**: __IPA_SIZE_HUMAN__ (__IPA_SIZE_BYTES__ bytes)
-          - **IPA SHA256**: `__IPA_SHA256__`
+          - **IPA**: \`$IPA_NAME\`
+          - **Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
+          - **SHA256**: \`$SHA256\`
 
-          ### Runner / Environment
+          ### Commits
+          $(cat commits.md)
 
-          - **Runner OS**: __RUNNER_OS__ (__RUNNER_ARCH__)
-          - **Image OS**: __IMAGE_OS__
-          - **Image Version**: __IMAGE_VERSION__
-
-          ### Build Environment
-
-          - **Xcode Version**: __XCODE_VERSION__
-          - **Xcode Build**: __XCODE_BUILD__
-          - **iOS SDK Version**: __IOS_SDK_VERSION__
-          - **Swift Version**: __SWIFT_VERSION__
-
-          - **Release URL**: [GitHub Release](__RELEASE_URL__)
-          - **Tag**: `__TAG_NAME__`
-
-          ### Commits included in this build (latest 10)
-
-          __COMMITS__
-
-          ### ダウンロード方法
-
-          1. 下の「Assets」セクションから `.ipa` ファイルをダウンロード
-          2. SideStoreでインストール可能
-
-          **注意**: このIPAは署名無しです。SideStoreで署名してからインストールしてください。
+          **Note:** This IPA is unsigned. Use SideStore to install.
           EOF
 
-          COMMITS_CONTENT=$(cat commit-list.md)
-
-          # Xcode/SDK情報を取得
-          XCODE_VERSION="${{ env.XCODE_VERSION }}"
-          XCODE_BUILD="${{ env.XCODE_BUILD }}"
-          IOS_SDK_VERSION="${{ env.IOS_SDK_VERSION }}"
-          SWIFT_VERSION=$(swift --version | head -n 1 || echo "unknown")
-          
-          perl -pi -e "s#__BUILD_DURATION__#$BUILD_DURATION#g" release-body.md
-          perl -pi -e "s#__IPA_SIZE_HUMAN__#$IPA_SIZE_HUMAN#g" release-body.md
-          perl -pi -e "s#__IPA_SIZE_BYTES__#$IPA_SIZE_BYTES#g" release-body.md
-          perl -pi -e "s#__IPA_SHA256__#$IPA_SHA256#g" release-body.md
-          perl -pi -e "s#__RUNNER_OS__#$RUNNER_OS#g" release-body.md
-          perl -pi -e "s#__RUNNER_ARCH__#$RUNNER_ARCH#g" release-body.md
-          perl -pi -e "s#__IMAGE_OS__#$IMAGE_OS#g" release-body.md
-          perl -pi -e "s#__IMAGE_VERSION__#$IMAGE_VERSION#g" release-body.md
-          perl -pi -e "s#__XCODE_VERSION__#$XCODE_VERSION#g" release-body.md
-          perl -pi -e "s#__XCODE_BUILD__#$XCODE_BUILD#g" release-body.md
-          perl -pi -e "s#__IOS_SDK_VERSION__#$IOS_SDK_VERSION#g" release-body.md
-          perl -pi -e "s#__SWIFT_VERSION__#$SWIFT_VERSION#g" release-body.md
-          perl -pi -e "s#__TAG_NAME__#$TAG_NAME#g" release-body.md
-          perl -pi -e "s#__RELEASE_URL__#$RELEASE_URL#g" release-body.md
-          perl -0pi -e 's#__COMMITS__#'"$COMMITS_CONTENT"'#g' release-body.md
-
-          cat > build-metadata.json <<EOF2
+          cat > build-metadata.json <<EOF
           {
-            "ipa_name": "${{ env.IPA_NAME }}",
-            "ipa_size_bytes": $IPA_SIZE_BYTES,
-            "ipa_sha256": "$IPA_SHA256",
-            "build_duration_seconds": $DURATION_SEC,
-            "build_duration_hms": "$BUILD_DURATION",
-            "runner": {
-              "os": "$RUNNER_OS",
-              "arch": "$RUNNER_ARCH",
-              "image_os": "$IMAGE_OS",
-              "image_version": "$IMAGE_VERSION"
-            },
-            "build_environment": {
-              "xcode_version": "${{ env.XCODE_VERSION }}",
-              "xcode_build": "${{ env.XCODE_BUILD }}",
-              "ios_sdk_version": "${{ env.IOS_SDK_VERSION }}",
-              "swift_version": "$(swift --version | head -n 1 || echo 'unknown')"
-            },
-            "tag_name": "$TAG_NAME",
-            "release_url": "$RELEASE_URL",
+            "ipa": "$IPA_NAME",
+            "size_bytes": $SIZE_BYTES,
+            "sha256": "$SHA256",
             "commit": "${{ github.sha }}",
-            "branch": "${{ github.ref_name }}"
+            "branch": "${{ github.ref_name }}",
+            "run": ${{ github.run_number }}
           }
-          EOF2
+          EOF
 
-          echo "Metadata generation completed" | tee -a workflow.log
-
-      # ============================================================================
-      # Artifact Upload
-      # ============================================================================
-
-      - name: Upload build metadata artifact
+      # =========================================================
+      # Upload Artifacts
+      # =========================================================
+      - name: Upload metadata
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-ipa-build-metadata
+          name: unsigned-ipa-metadata
           path: |
             release-body.md
             build-metadata.json
-            commit-list.md
-            runner-system-info.txt
-            runner-env.txt
-            runner-xcode-info.txt
-          retention-days: 30
+            commits.md
 
-      - name: Upload debug logs artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unsigned-ipa-debug-logs
-          path: |
-            workflow.log
-            build.log
-            ipa-creation.log
-            verification.log
-          retention-days: 30
-          if-no-files-found: warn
-
-      # ============================================================================
-      # Release Creation
-      # ============================================================================
-
-      - name: Create Draft Release and Upload IPA
-        id: create_release
-        continue-on-error: false
-        run: |
-          cd ${{ github.workspace }}
-          echo "=== Release Creation Debug Info ===" | tee -a workflow.log
-          echo "IPA file name: ${{ env.IPA_NAME }}" | tee -a workflow.log
-          echo "IPA file path: ${{ github.workspace }}/${{ env.IPA_NAME }}" | tee -a workflow.log
-          echo "Current directory: $(pwd)" | tee -a workflow.log
-          echo "Files in workspace:" | tee -a workflow.log
-          ls -la | tee -a workflow.log || true
-          echo "IPA files:" | tee -a workflow.log
-          ls -lh *.ipa | tee -a workflow.log || true
-          echo "" | tee -a workflow.log
-          
-          if [ ! -f "${{ env.IPA_NAME }}" ]; then
-            echo "ERROR: IPA file not found!" | tee -a workflow.log
-            exit 1
-          fi
-          
-          echo "IPA file exists and is ready for upload" | tee -a workflow.log
-          ls -lh "${{ env.IPA_NAME }}" | tee -a workflow.log
-        env:
-          IPA_NAME: ${{ env.IPA_NAME }}
-
-      - name: Generate tag name
-        id: tag_name
-        run: |
-          cd ${{ github.workspace }}
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          TAG_NAME="build-${{ github.run_number }}-${SHORT_SHA}"
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "Generated tag name: $TAG_NAME" | tee -a workflow.log
-
-      - name: Upload IPA to Release
-        id: release
+      # =========================================================
+      # Release
+      # =========================================================
+      - name: Create draft release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.TAG_NAME }}
-          name: "Build #${{ github.run_number }} - ${{ github.sha }}"
+          tag_name: build-${{ github.run_number }}
+          name: Unsigned IPA Build #${{ github.run_number }}
           body_path: release-body.md
           draft: true
-          prerelease: false
-          files: |
-            ${{ env.IPA_NAME }}
-          fail_on_unmatched_files: true
+          files: ${{ env.IPA_NAME }}
 
-      - name: Get actual release tag and URL
-        if: success()
-        id: get_release_info
+      # =========================================================
+      # Summary
+      # =========================================================
+      - name: Job Summary
         run: |
-          cd ${{ github.workspace }}
-          
-          echo "Getting actual release information..." | tee -a workflow.log
-          
-          # GitHub APIから最新のdraftリリースを取得（作成直後のリリース）
-          # 少し待ってからAPIを呼び出す（リリース作成の反映を待つ）
-          sleep 2
-          
-          RELEASE_INFO=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases?per_page=5")
-          
-          echo "API Response (first 500 chars):" | tee -a workflow.log
-          echo "$RELEASE_INFO" | head -c 500 | tee -a workflow.log
-          echo "" | tee -a workflow.log
-          
-          # JSONから最新のdraftリリースを取得
-          if command -v jq &> /dev/null; then
-            RELEASE_URL=$(echo "$RELEASE_INFO" | jq -r '[.[] | select(.draft == true)][0].html_url // empty')
-            ACTUAL_TAG=$(echo "$RELEASE_INFO" | jq -r '[.[] | select(.draft == true)][0].tag_name // empty')
-            
-            # draftが見つからない場合は最新のリリースを使用
-            if [ -z "$RELEASE_URL" ]; then
-              RELEASE_URL=$(echo "$RELEASE_INFO" | jq -r '.[0].html_url // empty')
-              ACTUAL_TAG=$(echo "$RELEASE_INFO" | jq -r '.[0].tag_name // empty')
-            fi
-          else
-            # PythonでJSONをパース（heredocを使わずにechoで作成）
-            echo 'import json, sys' > /tmp/parse_release.py
-            echo 'try:' >> /tmp/parse_release.py
-            echo '    releases = json.load(sys.stdin)' >> /tmp/parse_release.py
-            echo '    draft_release = next((r for r in releases if r.get("draft", False)), None)' >> /tmp/parse_release.py
-            echo '    if draft_release:' >> /tmp/parse_release.py
-            echo '        print(draft_release.get("html_url", ""))' >> /tmp/parse_release.py
-            echo '        print(draft_release.get("tag_name", ""))' >> /tmp/parse_release.py
-            echo '    elif releases:' >> /tmp/parse_release.py
-            echo '        print(releases[0].get("html_url", ""))' >> /tmp/parse_release.py
-            echo '        print(releases[0].get("tag_name", ""))' >> /tmp/parse_release.py
-            echo '    else:' >> /tmp/parse_release.py
-            echo '        print("")' >> /tmp/parse_release.py
-            echo '        print("")' >> /tmp/parse_release.py
-            echo 'except Exception:' >> /tmp/parse_release.py
-            echo '    print("")' >> /tmp/parse_release.py
-            echo '    print("")' >> /tmp/parse_release.py
-            RESULT=$(echo "$RELEASE_INFO" | python3 /tmp/parse_release.py)
-            RELEASE_URL=$(echo "$RESULT" | head -n 1)
-            ACTUAL_TAG=$(echo "$RESULT" | tail -n 1)
-          fi
-          
-          if [ -z "$RELEASE_URL" ] || [ "$RELEASE_URL" = "null" ]; then
-            echo "Warning: Could not determine release URL from API, using fallback" | tee -a workflow.log
-            RELEASE_URL="https://github.com/${{ github.repository }}/releases"
-            ACTUAL_TAG="untagged-unknown"
-          fi
-          
-          echo "ACTUAL_RELEASE_URL=$RELEASE_URL" >> $GITHUB_OUTPUT
-          echo "ACTUAL_TAG=$ACTUAL_TAG" >> $GITHUB_OUTPUT
-          echo "Release URL: $RELEASE_URL" | tee -a workflow.log
-          echo "Actual tag: $ACTUAL_TAG" | tee -a workflow.log
-          
-          # メタデータJSONを更新
-          if [ -f build-metadata.json ]; then
-            if command -v jq &> /dev/null; then
-              jq --arg url "$RELEASE_URL" --arg tag "$ACTUAL_TAG" \
-                '.release_url = $url | .tag_name = $tag' build-metadata.json > build-metadata.json.tmp
-              mv build-metadata.json.tmp build-metadata.json
-            else
-              echo 'import json, os' > /tmp/update_metadata.py
-              echo 'release_url = os.environ.get("RELEASE_URL", "")' >> /tmp/update_metadata.py
-              echo 'actual_tag = os.environ.get("ACTUAL_TAG", "")' >> /tmp/update_metadata.py
-              echo 'with open("build-metadata.json", "r") as f:' >> /tmp/update_metadata.py
-              echo '    data = json.load(f)' >> /tmp/update_metadata.py
-              echo 'data["release_url"] = release_url' >> /tmp/update_metadata.py
-              echo 'data["tag_name"] = actual_tag' >> /tmp/update_metadata.py
-              echo 'with open("build-metadata.json", "w") as f:' >> /tmp/update_metadata.py
-              echo '    json.dump(data, f, indent=2)' >> /tmp/update_metadata.py
-              RELEASE_URL="$RELEASE_URL" ACTUAL_TAG="$ACTUAL_TAG" python3 /tmp/update_metadata.py
-            fi
-          fi
-          
-          # release-body.mdも更新
-          perl -pi -e "s#https://github.com/\${{ github.repository }}/releases#${RELEASE_URL}#g" release-body.md || true
-
-      # ============================================================================
-      # Generate Actions Summary
-      # ============================================================================
-
-      - name: Generate Actions Summary
-        if: success()
-        run: |
-          cd ${{ github.workspace }}
-          
-          echo "Generating Actions Summary..." | tee -a workflow.log
-          
-          # メタデータから情報を読み込む
-          IPA_NAME="${{ env.IPA_NAME }}"
-          BUILD_DURATION="${{ env.BUILD_DURATION }}"
-          
-          # 実際のリリースURLとタグ名を取得（リリース作成後のステップから）
-          if [ -n "${{ steps.get_release_info.outputs.ACTUAL_RELEASE_URL }}" ]; then
-            RELEASE_URL="${{ steps.get_release_info.outputs.ACTUAL_RELEASE_URL }}"
-            TAG_NAME="${{ steps.get_release_info.outputs.ACTUAL_TAG }}"
-          else
-            # フォールバック: メタデータJSONから取得
-            if [ -f build-metadata.json ]; then
-              if command -v jq &> /dev/null; then
-                RELEASE_URL=$(jq -r '.release_url // empty' build-metadata.json)
-                TAG_NAME=$(jq -r '.tag_name // empty' build-metadata.json)
-              else
-                RELEASE_URL=$(python3 -c "import json; print(json.load(open('build-metadata.json')).get('release_url', ''))")
-                TAG_NAME=$(python3 -c "import json; print(json.load(open('build-metadata.json')).get('tag_name', ''))")
-              fi
-            fi
-            
-            if [ -z "$RELEASE_URL" ]; then
-              RELEASE_URL="https://github.com/${{ github.repository }}/releases"
-              TAG_NAME="untagged-unknown"
-            fi
-          fi
-          
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          
-          # JSON から情報を抽出
-          if [ -f build-metadata.json ]; then
-            if command -v jq &> /dev/null; then
-              IPA_SIZE_BYTES=$(jq -r '.ipa_size_bytes' build-metadata.json)
-              IPA_SHA256=$(jq -r '.ipa_sha256' build-metadata.json)
-              RUNNER_OS=$(jq -r '.runner.os' build-metadata.json)
-              RUNNER_ARCH=$(jq -r '.runner.arch' build-metadata.json)
-            else
-              # Python で JSON をパース
-              IPA_SIZE_BYTES=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['ipa_size_bytes'])")
-              IPA_SHA256=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['ipa_sha256'])")
-              RUNNER_OS=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['runner']['os'])")
-              RUNNER_ARCH=$(python3 -c "import json; print(json.load(open('build-metadata.json'))['runner']['arch'])")
-            fi
-          else
-            echo "Warning: build-metadata.json not found, using defaults" | tee -a workflow.log
-            IPA_SIZE_BYTES="unknown"
-            IPA_SHA256="unknown"
-            RUNNER_OS="macOS"
-            RUNNER_ARCH="unknown"
-          fi
-          
-          if [ -f "$IPA_NAME" ]; then
-            IPA_SIZE_HUMAN=$(du -h "$IPA_NAME" | cut -f1)
-          else
-            IPA_SIZE_HUMAN="unknown"
-          fi
-          
-          BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          
-          # GitHub Actions Summary に書き込む
           {
-            echo "# 🎉 Build Completed Successfully"
+            echo "# ✅ Build Completed"
             echo ""
-            echo "## 📦 Build Artifacts"
-            echo ""
-            echo "| Artifact | Description | Size |"
-            echo "|----------|-------------|------|"
-            echo "| **IPA File** | Unsigned IPA package | \`${IPA_SIZE_HUMAN}\` |"
-            echo "| **Build Metadata** | Release notes, metadata, commit list | 4.79 KB |"
-            echo "| **Debug Logs** | Build logs, verification logs | 6.01 KB |"
-            echo ""
-            echo "## 🔗 Quick Links"
-            echo ""
-            echo "- 🚀 **[View Release (Draft)](${RELEASE_URL})** - Download IPA and view release notes"
-            echo "- 📋 **[View Build Run](${RUN_URL})** - See detailed build logs"
-            echo "- 📦 **[Download Artifacts](#)** - Scroll down to download all artifacts"
-            echo ""
-            echo "## 📊 Build Information"
-            echo ""
-            echo "- **Build Duration**: \`${BUILD_DURATION}\`"
-            echo "- **IPA File**: \`${IPA_NAME}\`"
-            echo "- **IPA Size**: \`${IPA_SIZE_HUMAN}\` (\`${IPA_SIZE_BYTES}\` bytes)"
-            echo "- **IPA SHA256**: \`\`${IPA_SHA256}\`\`"
-            echo "- **Runner**: \`${RUNNER_OS}\` (\`${RUNNER_ARCH}\`)"
-            echo ""
-            echo "## 🔧 Build Environment"
-            echo ""
-            echo "- **Xcode Version**: \`${{ env.XCODE_VERSION }}\`"
-            echo "- **Xcode Build**: \`${{ env.XCODE_BUILD }}\`"
-            echo "- **iOS SDK Version**: \`${{ env.IOS_SDK_VERSION }}\`"
-            echo "- **Swift Version**: \`$(swift --version | head -n 1 || echo 'unknown')\`"
-            echo "- **Tag**: \`${{ env.TAG_NAME }}\`"
-            echo ""
-            echo "## 📝 What's Included"
-            echo ""
-            echo "### Artifacts Available for Download:"
-            echo ""
-            echo "1. **unsigned-ipa-backup** - IPA file backup"
-            echo "2. **unsigned-ipa-build-metadata** - Contains:"
-            echo "   - \`release-body.md\` - Release notes in Markdown"
-            echo "   - \`build-metadata.json\` - Machine-readable build metadata"
-            echo "   - \`commit-list.md\` - Latest 10 commits"
-            echo "   - \`runner-system-info.txt\` - Runner system information"
-            echo "   - \`runner-env.txt\` - Environment variables"
-            echo "   - \`runner-xcode-info.txt\` - Xcode and SDK information"
-            echo "3. **unsigned-ipa-debug-logs** - Contains:"
-            echo "   - \`workflow.log\` - Complete workflow execution log"
-            echo "   - \`build.log\` - Xcode build output"
-            echo "   - \`ipa-creation.log\` - IPA creation process log"
-            echo "   - \`verification.log\` - IPA verification log"
-            echo ""
-            echo "## ⚠️ Important Notes"
-            echo ""
-            echo "- This IPA is **unsigned** and requires SideStore for installation"
-            echo "- The release is created as a **draft** - you can review and publish it manually"
-            echo "- All artifacts are retained for **30 days**"
-            echo ""
-            echo "---"
-            echo ""
-            echo "**Build completed at**: ${BUILD_TIME}"
+            echo "- **IPA:** \`$IPA_NAME\`"
+            echo "- **Size:** $IPA_SIZE_HUMAN"
+            echo "- **SHA256:** \`$IPA_SHA256\`"
           } >> $GITHUB_STEP_SUMMARY
-          
-          echo "Actions Summary generated successfully" | tee -a workflow.log
-          echo "Summary file location: $GITHUB_STEP_SUMMARY" | tee -a workflow.log
-
-      # ============================================================================
-      # Error Summary (if failed)
-      # ============================================================================
-
-      - name: Generate error summary
-        if: failure()
-        run: |
-          echo "=== Build Failed ===" | tee -a workflow.log
-          echo "Timestamp: $(date -u)" | tee -a workflow.log
-          echo "" | tee -a workflow.log
-          echo "## ❌ Build Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The build process encountered an error. Please check the logs below for details." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Available Logs:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **workflow.log** - Complete workflow execution log" >> $GITHUB_STEP_SUMMARY
-          echo "- **build.log** - Xcode build output (if build started)" >> $GITHUB_STEP_SUMMARY
-          echo "- **ipa-creation.log** - IPA creation process log (if IPA creation started)" >> $GITHUB_STEP_SUMMARY
-          echo "- **verification.log** - IPA verification log (if verification started)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All logs are available in the **unsigned-ipa-debug-logs** artifact." >> $GITHUB_STEP_SUMMARY
-
-      # ============================================================================
-      # Backup Artifact
-      # ============================================================================
-
-      - name: Upload IPA as Artifact (backup)
-        if: always() && env.IPA_NAME != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: unsigned-ipa-backup
-          path: ${{ github.workspace }}/${{ env.IPA_NAME }}
-          retention-days: 30
-          if-no-files-found: warn
