@@ -1,41 +1,96 @@
 import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
 
 struct ContentView: View {
-    // 画面タブ
-    enum Tab {
-        case home
-        case updates
-        case info
-    }
-    
-    @State private var selectedTab: Tab = .home
+    @State private var showUpdateView = false
+    @State private var showInfoView = false
     @StateObject private var versionManager = VersionManager()
     
     var body: some View {
-        ZStack {
-            // 共通背景
-            Color(hex: "020617").ignoresSafeArea()
-            LiquidBackground()
-            
-            VStack(spacing: 0) {
-                // メインコンテンツ
-                Group {
-                    switch selectedTab {
-                    case .home:
-                        HomeView(selectedTab: $selectedTab, versionManager: versionManager)
-                    case .updates:
-                        UpdateCheckView()
-                    case .info:
-                        InfoView()
+        NavigationStack {
+            ZStack {
+                // Background
+                Color(hex: "020617").ignoresSafeArea()
+                LiquidBackground()
+                
+                ScrollView {
+                    GlassEffectContainer {
+                        VStack(spacing: 24) {
+                            // Header
+                            VStack(spacing: 16) {
+                                Image(systemName: "app.dashed")
+                                    .font(.system(size: 48, weight: .regular))
+                                    .symbolVariant(.none)
+                                    .foregroundStyle(.primary)
+                                    .frame(width: 80, height: 80)
+                                    .glassEffect(.interactive, in: Circle())
+                                
+                                VStack(spacing: 8) {
+                                    Text("Nezu App")
+                                        .font(.system(size: 32, weight: .bold))
+                                        .foregroundStyle(.primary)
+                                    
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "info.circle.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+                                        Text("Version \(versionManager.currentVersionString) (\(versionManager.currentBuildString))")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .glassEffect(.interactive, in: Capsule())
+                                }
+                            }
+                            .padding(.top, 40)
+                            
+                            // Action Buttons
+                            VStack(spacing: 12) {
+                                ActionButton(
+                                    title: "開発者情報",
+                                    icon: "person.circle.fill",
+                                    action: { showInfoView = true }
+                                )
+                                
+                                ActionButton(
+                                    title: "更新を確認",
+                                    icon: "arrow.clockwise.circle.fill",
+                                    action: { showUpdateView = true }
+                                )
+                            }
+                            .padding(.horizontal, 20)
+                            
+                            // Debug Info
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("デバッグ情報")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                
+                                VStack(alignment: .leading, spacing: 8) {
+                                    DebugInfoRow(label: "Bundle ID", value: Bundle.main.bundleIdentifier ?? "N/A")
+                                    DebugInfoRow(label: "Build", value: versionManager.currentBuildString)
+                                    DebugInfoRow(label: "Version", value: versionManager.currentVersionString)
+                                    
+                                    #if os(iOS)
+                                    DebugInfoRow(label: "iOS Version", value: UIDevice.current.systemVersion)
+                                    DebugInfoRow(label: "Device", value: UIDevice.current.model)
+                                    #endif
+                                }
+                            }
+                            .padding(16)
+                            .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 40)
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                
-                // 下部ドック（Liquid Glass）
-                DockView(selectedTab: $selectedTab, versionManager: versionManager)
+            }
+            .navigationBarHidden(true)
+            .sheet(isPresented: $showInfoView) {
+                InfoView()
+            }
+            .sheet(isPresented: $showUpdateView) {
+                UpdateCheckView()
             }
         }
     }
@@ -45,32 +100,26 @@ struct ContentView: View {
 
 struct ActionButton: View {
     let title: String
-    let subtitle: String
     let icon: String
     let action: () -> Void
     
     var body: some View {
-        Button {
+        Button(action: {
             #if os(iOS)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             #endif
             action()
-        } label: {
-            HStack(spacing: 14) {
+        }) {
+            HStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 20, weight: .semibold))
                     .symbolVariant(.none)
                     .foregroundStyle(.primary)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 32, height: 32)
                 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.primary)
-                    Text(subtitle)
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(.secondary)
-                }
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.primary)
                 
                 Spacer()
                 
@@ -87,196 +136,20 @@ struct ActionButton: View {
     }
 }
 
-struct StatusRow: View {
+struct DebugInfoRow: View {
     let label: String
     let value: String
     
     var body: some View {
         HStack {
-            Text(label)
-                .font(.system(size: 14, weight: .regular))
+            Text(label + ":")
+                .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(.secondary)
             Spacer()
             Text(value)
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
                 .foregroundStyle(.primary)
         }
-    }
-}
-
-// MARK: - Home Screen
-
-struct HomeView: View {
-    @Binding var selectedTab: ContentView.Tab
-    @ObservedObject var versionManager: VersionManager
-    
-    var body: some View {
-        ScrollView {
-            GlassEffectContainer {
-                VStack(spacing: 16) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "app.dashed")
-                            .font(.system(size: 24, weight: .regular))
-                            .symbolVariant(.none)
-                            .foregroundStyle(.primary)
-                            .frame(width: 48, height: 48)
-                            .glassEffect(.interactive, in: Circle())
-                        
-                        VStack(spacing: 2) {
-                            Text("Nezu App")
-                                .font(.system(size: 22, weight: .semibold))
-                                .foregroundStyle(.primary)
-                            
-                            Text("IPA Management")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.top, 20)
-                    
-                    // Actions
-                    VStack(spacing: 10) {
-                        ActionButton(
-                            title: "Check for Updates",
-                            subtitle: "v\(versionManager.currentVersionString) (\(versionManager.currentBuildString))",
-                            icon: "arrow.up.circle",
-                            action: {
-                                selectedTab = .updates
-                            }
-                        )
-                        
-                        ActionButton(
-                            title: "Developer Info",
-                            subtitle: "About & Links",
-                            icon: "person.circle",
-                            action: {
-                                selectedTab = .info
-                            }
-                        )
-                    }
-                    .padding(.horizontal, 16)
-                    
-                    // Status
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("Status")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Text("Ready")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.green)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .glassEffect(.interactive, in: Capsule())
-                        }
-                        
-                        Divider()
-                            .background(.quaternary)
-                        
-                        StatusRow(label: "Bundle ID", value: Bundle.main.bundleIdentifier ?? "com.nezu.app")
-                        StatusRow(label: "Version", value: versionManager.currentVersionString)
-                        StatusRow(label: "Build", value: versionManager.currentBuildString)
-                        
-                        #if os(iOS)
-                        StatusRow(label: "iOS Version", value: UIDevice.current.systemVersion)
-                        StatusRow(label: "Device", value: UIDevice.current.model)
-                        #endif
-                        
-                        if let fullVersion = versionManager.currentVersion?.fullVersionString {
-                            StatusRow(label: "Full Version", value: fullVersion)
-                        }
-                    }
-                    .padding(16)
-                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 14))
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Dock
-
-struct DockView: View {
-    @Binding var selectedTab: ContentView.Tab
-    @ObservedObject var versionManager: VersionManager
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Divider()
-                .overlay(Color.white.opacity(0.08))
-            
-            GlassEffectContainer {
-                HStack(spacing: 18) {
-                    DockItem(
-                        systemName: "house.fill",
-                        title: "Home",
-                        isSelected: selectedTab == .home
-                    ) {
-                        selectedTab = .home
-                    }
-                    
-                    DockItem(
-                        systemName: "arrow.up.circle.fill",
-                        title: "Updates",
-                        isSelected: selectedTab == .updates
-                    ) {
-                        selectedTab = .updates
-                    }
-                    
-                    DockItem(
-                        systemName: "person.crop.circle",
-                        title: "Info",
-                        isSelected: selectedTab == .info
-                    ) {
-                        selectedTab = .info
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .glassEffect(.interactive, in: Capsule())
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 10)
-        }
-        .background(
-            Color.black.opacity(0.1)
-                .ignoresSafeArea(edges: .bottom)
-        )
-    }
-}
-
-struct DockItem: View {
-    let systemName: String
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button {
-            #if os(iOS)
-            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-            #endif
-            action()
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: systemName)
-                    .font(.system(size: 16, weight: .semibold))
-                    .symbolVariant(.none)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                
-                Text(title)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
     }
 }
 
@@ -287,7 +160,6 @@ struct LiquidBackground: View {
     
     var body: some View {
         ZStack {
-            // シンプルなグラデーション背景
             Circle()
                 .fill(
                     RadialGradient(
@@ -355,6 +227,4 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
-    
-    static let emerald = Color(red: 16/255, green: 185/255, blue: 129/255)
 }
