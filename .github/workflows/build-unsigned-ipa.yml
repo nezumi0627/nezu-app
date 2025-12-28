@@ -59,12 +59,12 @@ jobs:
           if ls *.xcworkspace >/dev/null 2>&1; then
             TARGET_TYPE="workspace"
             TARGET_FILE=$(ls *.xcworkspace | head -n1)
-            SCHEME=$(xcodebuild -list -workspace "$TARGET_FILE" | awk '/Schemes:/ {getline; print}')
+            SCHEME=$(xcodebuild -list -workspace "$TARGET_FILE" | awk '/Schemes:/ {getline; gsub(/^[ \t]+|[ \t]+$/, ""); print}')
             TARGET_ARGS=(-workspace "$TARGET_FILE")
           else
             TARGET_TYPE="project"
             TARGET_FILE="nezu-app.xcodeproj"
-            SCHEME=$(xcodebuild -list -project "$TARGET_FILE" | awk '/Schemes:/ {getline; print}')
+            SCHEME=$(xcodebuild -list -project "$TARGET_FILE" | awk '/Schemes:/ {getline; gsub(/^[ \t]+|[ \t]+$/, ""); print}')
             TARGET_ARGS=(-project "$TARGET_FILE")
           fi
 
