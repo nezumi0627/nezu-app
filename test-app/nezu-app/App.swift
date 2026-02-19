@@ -1,18 +1,17 @@
 //
-//  App.swift
-//  test-app
+//  NezuApp.swift
+//  nezu-app
 //
-//  Created by GitHub Actions
+//  iOS 26 Liquid Glass showcase app with OTA updater
 //
 
 import SwiftUI
 
 @main
-struct TestApp: App {
+struct NezuApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
     }
 }
-

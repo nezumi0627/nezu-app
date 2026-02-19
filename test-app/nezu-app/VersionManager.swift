@@ -1,227 +1,193 @@
-import Foundation
-import Combine
-#if os(iOS)
-import UIKit
-#endif
+//
+//  VersionManager.swift
+//  nezu-app
+//
+//  GitHub Releases API から最新バージョンを取得し、
+//  現在のアプリバージョンと比較する。
+//
 
-struct ReleaseInfo: Codable {
+import SwiftUI
+
+@MainActor
+class VersionManager: ObservableObject {
+    @Published var isLoading = false
+    @Published var hasUpdate = false
+    @Published var latestVersion: String?
+    @Published var downloadURL: URL?
+    @Published var error: String?
+
+    var currentVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
+    var currentBuild: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+    }
+
+    private let apiURL = "https://api.github.com/repos/nezumi0627/nezu-app/releases"
+
+    // MARK: - Check for updates
+
+    func checkForUpdates() {
+        guard !isLoading else { return }
+
+        isLoading = true
+        hasUpdate = false
+        latestVersion = nil
+        downloadURL = nil
+        error = nil
+
+        Task {
+            do {
+                guard let url = URL(string: apiURL) else {
+                    throw UpdateError.invalidURL
+                }
+
+                var request = URLRequest(url: url)
+                request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+                request.timeoutInterval = 15
+
+                let (data, response) = try await URLSession.shared.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    throw UpdateError.serverError
+                }
+
+                let releases = try JSONDecoder().decode([Release].self, from: data)
+
+                // Draft 以外で IPA を含むリリースを取得
+                let valid = releases
+                    .filter { !$0.draft }
+                    .filter { $0.assets.contains { $0.name.hasSuffix(".ipa") } }
+                    .sorted { $0.publishedAt > $1.publishedAt }
+
+                guard let latest = valid.first else {
+                    throw UpdateError.noRelease
+                }
+
+                let remoteVersion = parseVersion(from: latest.tagName)
+                latestVersion = remoteVersion
+
+                if let ipa = latest.assets.first(where: { $0.name.hasSuffix(".ipa") }) {
+                    downloadURL = URL(string: ipa.browserDownloadURL)
+                }
+
+                hasUpdate = isNewer(remote: remoteVersion, local: currentVersion, remoteBuild: parseBuild(from: latest.tagName), localBuild: currentBuild)
+                isLoading = false
+
+            } catch {
+                self.error = error.localizedDescription
+                isLoading = false
+            }
+        }
+    }
+
+    // MARK: - Download
+
+    func downloadIPA() {
+        guard let url = downloadURL else { return }
+        #if os(iOS)
+        UIApplication.shared.open(url)
+        #else
+        print("Download URL: \(url)")
+        #endif
+    }
+
+    // MARK: - Version parsing
+
+    private func parseVersion(from tag: String) -> String {
+        // v1.2.0-build3 → 1.2.0
+        if tag.hasPrefix("v") {
+            let stripped = String(tag.dropFirst())
+            if let dash = stripped.firstIndex(of: "-") {
+                return String(stripped[stripped.startIndex..<dash])
+            }
+            return stripped
+        }
+        // build-22-abc1234 → ビルド番号のみ
+        if let match = tag.range(of: #"build-(\d+)"#, options: .regularExpression) {
+            return String(tag[match])
+        }
+        return tag
+    }
+
+    private func parseBuild(from tag: String) -> String {
+        // v1.2.0-build3 → 3
+        if let range = tag.range(of: #"build(\d+)"#, options: .regularExpression) {
+            let sub = tag[range]
+            return String(sub.dropFirst(5))
+        }
+        // build-22 → 22
+        if let range = tag.range(of: #"build-(\d+)"#, options: .regularExpression) {
+            let sub = tag[range]
+            return String(sub.dropFirst(6))
+        }
+        return "0"
+    }
+
+    private func isNewer(remote: String, local: String, remoteBuild: String, localBuild: String) -> Bool {
+        let rv = versionComponents(remote)
+        let lv = versionComponents(local)
+
+        for i in 0..<max(rv.count, lv.count) {
+            let r = i < rv.count ? rv[i] : 0
+            let l = i < lv.count ? lv[i] : 0
+            if r > l { return true }
+            if r < l { return false }
+        }
+
+        // バージョンが同じならビルド番号で比較
+        let rb = Int(remoteBuild) ?? 0
+        let lb = Int(localBuild) ?? 0
+        return rb > lb
+    }
+
+    private func versionComponents(_ version: String) -> [Int] {
+        version.split(separator: ".").compactMap { Int($0) }
+    }
+}
+
+// MARK: - Models
+
+struct Release: Codable {
     let tagName: String
-    let name: String
     let draft: Bool
+    let prerelease: Bool
+    let publishedAt: String
     let assets: [Asset]
-    let publishedAt: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case tagName = "tag_name"
-        case name
-        case draft
-        case assets
+        case draft, prerelease
         case publishedAt = "published_at"
+        case assets
     }
 }
 
 struct Asset: Codable {
     let name: String
-    let browserDownloadUrl: String
-    
+    let size: Int
+    let downloadCount: Int
+    let browserDownloadURL: String
+
     enum CodingKeys: String, CodingKey {
-        case name
-        case browserDownloadUrl = "browser_download_url"
+        case name, size
+        case downloadCount = "download_count"
+        case browserDownloadURL = "browser_download_url"
     }
 }
 
-struct AppVersion {
-    let major: Int
-    let minor: Int
-    let patch: Int
-    let build: Int
-    
-    var versionString: String {
-        "\(major).\(minor).\(patch)"
-    }
-    
-    var fullVersionString: String {
-        "\(major).\(minor).\(patch).\(build)"
-    }
-    
-    init?(versionString: String, buildString: String) {
-        let versionComponents = versionString.components(separatedBy: ".").compactMap { Int($0) }
-        guard versionComponents.count >= 2 else { return nil }
-        
-        self.major = versionComponents[0]
-        self.minor = versionComponents.count > 1 ? versionComponents[1] : 0
-        self.patch = versionComponents.count > 2 ? versionComponents[2] : 0
-        self.build = Int(buildString) ?? 0
-    }
-    
-    func compare(to other: AppVersion) -> ComparisonResult {
-        if major != other.major {
-            return major > other.major ? .orderedDescending : .orderedAscending
-        }
-        if minor != other.minor {
-            return minor > other.minor ? .orderedDescending : .orderedAscending
-        }
-        if patch != other.patch {
-            return patch > other.patch ? .orderedDescending : .orderedAscending
-        }
-        if build != other.build {
-            return build > other.build ? .orderedDescending : .orderedAscending
-        }
-        return .orderedSame
-    }
-}
+enum UpdateError: LocalizedError {
+    case invalidURL
+    case serverError
+    case noRelease
 
-@MainActor
-class VersionManager: ObservableObject {
-    @Published var currentVersion: AppVersion?
-    @Published var currentVersionString: String = "1.0.0"
-    @Published var currentBuildString: String = "1"
-    @Published var latestVersion: String?
-    @Published var latestBuild: Int?
-    @Published var updateAvailable: Bool = false
-    @Published var downloadUrl: String?
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
-    
-    private let githubRepo = "nezumi0627/nezu-app"
-    private let apiBaseUrl = "https://api.github.com/repos"
-    
-    init() {
-        #if os(iOS)
-        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
-           let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
-            self.currentVersionString = version
-            self.currentBuildString = build
-            self.currentVersion = AppVersion(versionString: version, buildString: build)
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL: return "無効な URL"
+        case .serverError: return "サーバーエラー"
+        case .noRelease: return "リリースが見つかりません"
         }
-        #endif
-    }
-    
-    func checkForUpdates() {
-        isLoading = true
-        errorMessage = nil
-        
-        let urlString = "\(apiBaseUrl)/\(githubRepo)/releases"
-        guard let url = URL(string: urlString) else {
-            errorMessage = "無効なURLです"
-            isLoading = false
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
-        
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            let receivedData = data
-            let receivedError = error
-            
-            Task { @MainActor in
-                guard let self = self else { return }
-                self.isLoading = false
-                
-                if let error = receivedError {
-                    self.errorMessage = "エラー: \(error.localizedDescription)"
-                    return
-                }
-                
-                guard let data = receivedData else {
-                    self.errorMessage = "データの取得に失敗しました"
-                    return
-                }
-                
-                self.processReleaseData(data)
-            }
-        }.resume()
-    }
-
-    private func processReleaseData(_ data: Data) {
-        do {
-            let releases = try JSONDecoder().decode([ReleaseInfo].self, from: data)
-            
-            // Draftリリースを除外し、publishedリリースのみをチェック
-            let publishedReleases = releases.filter { !$0.draft && $0.publishedAt != nil }
-            
-            guard let latestRelease = publishedReleases.first else {
-                self.errorMessage = "利用可能なリリースが見つかりません"
-                return
-            }
-            
-            // タグ名からバージョン情報を抽出
-            let (versionString, buildNumber) = self.extractVersionFromTag(latestRelease.tagName)
-            
-            if let ipaAsset = latestRelease.assets.first(where: { $0.name.hasSuffix(".ipa") }) {
-                self.latestVersion = versionString
-                self.latestBuild = buildNumber
-                self.downloadUrl = ipaAsset.browserDownloadUrl
-                updateCompareLogic(latestVersionString: versionString, latestBuild: buildNumber)
-            } else {
-                self.errorMessage = "IPAファイルが見つかりません"
-            }
-        } catch {
-            self.errorMessage = "データの解析に失敗しました: \(error.localizedDescription)"
-        }
-    }
-
-    private func updateCompareLogic(latestVersionString: String, latestBuild: Int?) {
-        guard let currentVersion = self.currentVersion else {
-            // 現在のバージョンが取得できない場合は比較しない
-            self.updateAvailable = false
-            return
-        }
-        
-        // 最新リリースのバージョンを解析
-        guard let latestVersion = AppVersion(
-            versionString: latestVersionString,
-            buildString: latestBuild.map { String($0) } ?? "0"
-        ) else {
-            // バージョン解析に失敗した場合は比較しない
-            self.updateAvailable = false
-            return
-        }
-        
-        // バージョン比較（最新が現在より新しい場合のみ更新あり）
-        let comparison = currentVersion.compare(to: latestVersion)
-        self.updateAvailable = comparison == .orderedAscending
-    }
-    
-    private func extractVersionFromTag(_ tag: String) -> (versionString: String, buildNumber: Int?) {
-        // untagged-{COMMIT_HASH}形式の場合
-        if tag.hasPrefix("untagged-") {
-            // untaggedリリースの場合は、リリース名からバージョンを抽出を試みる
-            // または、ビルド番号のみを使用
-            return (self.currentVersionString, nil)
-        }
-        
-        // build-{BUILD_NUMBER}-{COMMIT_HASH}形式の場合
-        let components = tag.components(separatedBy: "-")
-        if components.count >= 2, let buildNumber = Int(components[1]) {
-            // ビルド番号からバージョンを推定（現在のバージョン形式を維持）
-            return (self.currentVersionString, buildNumber)
-        }
-        
-        // v{MAJOR}.{MINOR}.{PATCH}形式の場合
-        if tag.hasPrefix("v") {
-            let versionString = String(tag.dropFirst())
-            return (versionString, nil)
-        }
-        
-        // その他の形式
-        return (tag, nil)
-    }
-    
-    func downloadIPA() {
-        guard let downloadUrl = downloadUrl,
-              let url = URL(string: downloadUrl) else {
-            errorMessage = "ダウンロードURLが無効です"
-            return
-        }
-        
-        #if os(iOS)
-        if UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url)
-        } else {
-            errorMessage = "ダウンロードを開始できませんでした"
-        }
-        #endif
     }
 }

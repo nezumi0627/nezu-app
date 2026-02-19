@@ -1,148 +1,122 @@
-import SwiftUI
-#if os(iOS)
-import UIKit
-#endif
+//
+//  UpdateView.swift
+//  nezu-app
+//
+//  GitHub Releases から更新をチェックし、IPA をダウンロードする画面。
+//
 
-struct UpdateCheckView: View {
-    @StateObject private var versionManager = VersionManager()
-    @Environment(\.dismiss) var dismiss
-    
+import SwiftUI
+
+struct UpdateView: View {
+    @StateObject private var updater = VersionManager()
+
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color(hex: "020617").ignoresSafeArea()
-                LiquidBackground()
-                
-                ScrollView {
-                    GlassEffectContainer {
-                        VStack(spacing: 24) {
-                            // Header
-                            VStack(spacing: 16) {
-                                Text("バージョン情報")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundStyle(.primary)
-                                
-                                Text("現在のバージョン: \(versionManager.currentVersionString) (\(versionManager.currentBuildString))")
-                                    .font(.system(size: 15, weight: .regular))
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Current version
+                    VStack(spacing: 4) {
+                        Text("現在のバージョン")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text("v\(updater.currentVersion) (Build \(updater.currentBuild))")
+                            .font(.title2.bold().monospaced())
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .glassEffect(in: .rect(cornerRadius: 16))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+
+                    // Status
+                    Group {
+                        if updater.isLoading {
+                            VStack(spacing: 12) {
+                                ProgressView()
+                                Text("確認中...")
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
-                            .padding(.top, 32)
-                            
-                            // Status
-                            VStack(spacing: 20) {
-                                if versionManager.isLoading {
-                                    VStack(spacing: 16) {
-                                        ProgressView()
-                                            .scaleEffect(1.2)
-                                        Text("更新を確認中...")
-                                            .font(.system(size: 14, weight: .regular))
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 40)
-                                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
-                                } else if let error = versionManager.errorMessage {
-                                    VStack(spacing: 12) {
-                                        Image(systemName: "exclamationmark.triangle.fill")
-                                            .font(.system(size: 32))
-                                            .foregroundStyle(.orange)
-                                        Text("エラー: \(error)")
-                                            .font(.system(size: 14, weight: .regular))
-                                            .foregroundStyle(.secondary)
-                                            .multilineTextAlignment(.center)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 40)
-                                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
-                                } else if versionManager.updateAvailable {
-                                    VStack(spacing: 20) {
-                                        Text("新しいバージョンが利用可能です！")
-                                            .font(.system(size: 18, weight: .semibold))
-                                            .foregroundStyle(.green)
-                                        
-                                        if let latestVersion = versionManager.latestVersion {
-                                            Text("最新バージョン: \(latestVersion)")
-                                                .font(.system(size: 16, weight: .medium))
-                                                .foregroundStyle(.primary)
-                                        }
-                                        
-                                        Button(action: {
-                                            #if os(iOS)
-                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                            #endif
-                                            versionManager.downloadIPA()
-                                        }) {
-                                            HStack(spacing: 8) {
-                                                Image(systemName: "arrow.down.circle.fill")
-                                                    .symbolVariant(.none)
-                                                Text("IPAをダウンロード")
-                                            }
-                                            .font(.system(size: 17, weight: .semibold))
-                                            .foregroundStyle(.white)
-                                            .padding(.horizontal, 24)
-                                            .padding(.vertical, 14)
-                                            .glassEffect(.interactive, in: Capsule())
-                                        }
-                                        .contentShape(Capsule())
-                                        
-                                        Text("※ダウンロード後、SideStoreで手動インストールしてください")
-                                            .font(.system(size: 12, weight: .regular))
-                                            .foregroundStyle(.tertiary)
-                                            .multilineTextAlignment(.center)
-                                            .padding(.horizontal, 16)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 32)
-                                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
-                                } else if versionManager.latestVersion != nil {
-                                    VStack(spacing: 12) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.system(size: 32))
-                                            .foregroundStyle(.blue)
-                                        Text("最新バージョンを使用しています")
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundStyle(.primary)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 40)
-                                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
-                                }
-                                
-                                Button(action: {
-                                    versionManager.checkForUpdates()
-                                }) {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "arrow.clockwise")
-                                            .symbolVariant(.none)
-                                        Text("更新を確認")
-                                    }
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(.primary)
-                                    .padding(.horizontal, 24)
-                                    .padding(.vertical, 14)
-                                    .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
-                                }
-                                .disabled(versionManager.isLoading)
-                                .contentShape(RoundedRectangle(cornerRadius: 16))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                            .glassEffect(in: .rect(cornerRadius: 16))
+                        } else if let error = updater.error {
+                            VStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.orange)
+                                Text(error)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 40)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 32)
+                            .glassEffect(in: .rect(cornerRadius: 16))
+                        } else if updater.hasUpdate, let latest = updater.latestVersion {
+                            VStack(spacing: 16) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.green)
+
+                                Text("新バージョン: v\(latest)")
+                                    .font(.headline)
+
+                                Button {
+                                    updater.downloadIPA()
+                                } label: {
+                                    Label("IPA をダウンロード", systemImage: "square.and.arrow.down")
+                                        .font(.body.bold())
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                }
+                                .buttonStyle(.glass)
+
+                                Text("SideStore で署名してインストール")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 32)
+                            .glassEffect(in: .rect(cornerRadius: 16))
+                        } else if updater.latestVersion != nil {
+                            VStack(spacing: 12) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.blue)
+                                Text("最新バージョンです")
+                                    .font(.headline)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                            .glassEffect(in: .rect(cornerRadius: 16))
                         }
                     }
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("閉じる") {
-                        dismiss()
+                    .padding(.horizontal, 20)
+
+                    // Check button
+                    Button {
+                        updater.checkForUpdates()
+                    } label: {
+                        Label("更新を確認", systemImage: "arrow.clockwise")
+                            .font(.body.bold())
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
                     }
-                    .foregroundStyle(.primary)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(updater.isLoading)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
                 }
             }
+            .navigationTitle("更新")
         }
         .onAppear {
-            versionManager.checkForUpdates()
+            updater.checkForUpdates()
         }
     }
+}
+
+#Preview {
+    UpdateView()
 }

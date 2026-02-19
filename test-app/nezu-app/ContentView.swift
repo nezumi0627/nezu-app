@@ -1,230 +1,135 @@
+//
+//  ContentView.swift
+//  nezu-app
+//
+//  メインのタブビュー。iOS 26 Liquid Glass デザイン。
+//
+
 import SwiftUI
 
 struct ContentView: View {
-    @State private var showUpdateView = false
-    @State private var showInfoView = false
-    @StateObject private var versionManager = VersionManager()
-    
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // Background
-                Color(hex: "020617").ignoresSafeArea()
-                LiquidBackground()
-                
-                ScrollView {
-                    GlassEffectContainer {
-                        VStack(spacing: 24) {
-                            // Header
-                            VStack(spacing: 16) {
-                                Image(systemName: "app.dashed")
-                                    .font(.system(size: 48, weight: .regular))
-                                    .symbolVariant(.none)
-                                    .foregroundStyle(.primary)
-                                    .frame(width: 80, height: 80)
-                                    .glassEffect(.interactive, in: Circle())
-                                
-                                VStack(spacing: 8) {
-                                    Text("Nezu App")
-                                        .font(.system(size: 32, weight: .bold))
-                                        .foregroundStyle(.primary)
-                                    
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "info.circle.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(.secondary)
-                                        Text("Version \(versionManager.currentVersionString) (\(versionManager.currentBuildString))")
-                                            .font(.system(size: 14, weight: .regular))
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .glassEffect(.interactive, in: Capsule())
-                                }
-                            }
-                            .padding(.top, 40)
-                            
-                            // Action Buttons
-                            VStack(spacing: 12) {
-                                ActionButton(
-                                    title: "開発者情報",
-                                    icon: "person.circle.fill",
-                                    action: { showInfoView = true }
-                                )
-                                
-                                ActionButton(
-                                    title: "更新を確認",
-                                    icon: "arrow.clockwise.circle.fill",
-                                    action: { showUpdateView = true }
-                                )
-                            }
-                            .padding(.horizontal, 20)
-                            
-                            // Debug Info
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("デバッグ情報")
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    DebugInfoRow(label: "Bundle ID", value: Bundle.main.bundleIdentifier ?? "N/A")
-                                    DebugInfoRow(label: "Build", value: versionManager.currentBuildString)
-                                    DebugInfoRow(label: "Version", value: versionManager.currentVersionString)
-                                    
-                                    #if os(iOS)
-                                    DebugInfoRow(label: "iOS Version", value: UIDevice.current.systemVersion)
-                                    DebugInfoRow(label: "Device", value: UIDevice.current.model)
-                                    #endif
-                                }
-                            }
-                            .padding(16)
-                            .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 40)
-                        }
-                    }
-                }
+        TabView {
+            Tab("ホーム", systemImage: "house.fill") {
+                HomeView()
             }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showInfoView) {
+
+            Tab("更新", systemImage: "arrow.clockwise") {
+                UpdateView()
+            }
+
+            Tab("情報", systemImage: "info.circle") {
                 InfoView()
             }
-            .sheet(isPresented: $showUpdateView) {
-                UpdateCheckView()
+        }
+    }
+}
+
+// MARK: - Home
+
+struct HomeView: View {
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // App icon
+                    Image(systemName: "app.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(.tint)
+                        .frame(width: 100, height: 100)
+                        .glassEffect(in: .circle)
+                        .padding(.top, 40)
+
+                    // App name & version
+                    VStack(spacing: 6) {
+                        Text("Nezu App")
+                            .font(.largeTitle.bold())
+
+                        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+                        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+                        Text("v\(version) (Build \(build))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Features
+                    VStack(spacing: 0) {
+                        FeatureRow(icon: "paintbrush.fill", title: "Liquid Glass", detail: "iOS 26 公式デザイン")
+                        Divider().padding(.leading, 52)
+                        FeatureRow(icon: "arrow.down.circle.fill", title: "OTA 更新", detail: "GitHub Releases から自動更新チェック")
+                        Divider().padding(.leading, 52)
+                        FeatureRow(icon: "hammer.fill", title: "自動ビルド", detail: "GitHub Actions で署名無し IPA を生成")
+                    }
+                    .glassEffect(in: .rect(cornerRadius: 16))
+                    .padding(.horizontal, 20)
+
+                    // Device info
+                    VStack(spacing: 0) {
+                        #if os(iOS)
+                        InfoRow(label: "デバイス", value: UIDevice.current.model)
+                        Divider().padding(.leading, 16)
+                        InfoRow(label: "iOS", value: UIDevice.current.systemVersion)
+                        Divider().padding(.leading, 16)
+                        #endif
+                        InfoRow(label: "Bundle ID", value: Bundle.main.bundleIdentifier ?? "-")
+                    }
+                    .glassEffect(in: .rect(cornerRadius: 16))
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
+                }
             }
+            .navigationTitle("Nezu App")
         }
     }
 }
 
 // MARK: - Components
 
-struct ActionButton: View {
-    let title: String
+struct FeatureRow: View {
     let icon: String
-    let action: () -> Void
-    
+    let title: String
+    let detail: String
+
     var body: some View {
-        Button(action: {
-            #if os(iOS)
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            #endif
-            action()
-        }) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .symbolVariant(.none)
-                    .foregroundStyle(.primary)
-                    .frame(width: 32, height: 32)
-                
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundStyle(.tint)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.primary)
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .medium))
-                    .symbolVariant(.none)
-                    .foregroundStyle(.tertiary)
+                    .font(.body.weight(.semibold))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .padding(18)
-            .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
+
+            Spacer()
         }
-        .buttonStyle(PlainButtonStyle())
-        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
-struct DebugInfoRow: View {
+struct InfoRow: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         HStack {
-            Text(label + ":")
-                .font(.system(size: 13, weight: .regular))
+            Text(label)
                 .foregroundStyle(.secondary)
             Spacer()
             Text(value)
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                .foregroundStyle(.primary)
+                .font(.body.weight(.medium).monospaced())
         }
+        .font(.subheadline)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 }
 
-// MARK: - Background
-
-struct LiquidBackground: View {
-    @State private var animate = false
-    
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.blue.opacity(0.08),
-                            Color.cyan.opacity(0.05),
-                            Color.clear
-                        ],
-                        center: .topLeading,
-                        startRadius: 0,
-                        endRadius: 400
-                    )
-                )
-                .frame(width: 500, height: 500)
-                .offset(x: animate ? 50 : -50, y: animate ? -100 : -150)
-                .blur(radius: 100)
-            
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.purple.opacity(0.06),
-                            Color.clear
-                        ],
-                        center: .bottomTrailing,
-                        startRadius: 0,
-                        endRadius: 350
-                    )
-                )
-                .frame(width: 400, height: 400)
-                .offset(x: animate ? -80 : 80, y: animate ? 120 : 150)
-                .blur(radius: 90)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 20).repeatForever(autoreverses: true)) {
-                animate.toggle()
-            }
-        }
-    }
-}
-
-// MARK: - Extensions
-
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3:
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6:
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8:
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (1, 1, 1, 0)
-        }
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
+#Preview {
+    ContentView()
 }

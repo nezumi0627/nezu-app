@@ -1,155 +1,113 @@
+//
+//  InfoView.swift
+//  nezu-app
+//
+//  開発者情報とリンク集。
+//
+
 import SwiftUI
 
 struct InfoView: View {
-    @Environment(\.dismiss) var dismiss
-    
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color(hex: "020617").ignoresSafeArea()
-                LiquidBackground()
-                
-                ScrollView {
-                    GlassEffectContainer {
-                        VStack(spacing: 24) {
-                            // Profile Image
-                            AsyncImage(url: URL(string: "https://github.com/nezumi0627.png")) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                ProgressView()
-                            }
-                            .frame(width: 120, height: 120)
-                            .clipShape(Circle())
-                            .glassEffect(.interactive, in: Circle())
-                            .padding(.top, 32)
-                            
-                            // Name and ID
-                            VStack(spacing: 8) {
-                                Text("ねずみ")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundStyle(.primary)
-                                
-                                Text("@nezumi0627")
-                                    .font(.system(size: 15, weight: .regular))
-                                    .foregroundStyle(.secondary)
-                            }
-                            
-                            // Title
-                            Text("高校生開発者")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .glassEffect(.interactive, in: Capsule())
-                            
-                            // Profile Info
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "location.fill")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(.red)
-                                        .frame(width: 24)
-                                    Text("Japanese, Fukuoka")
-                                        .font(.system(size: 15, weight: .regular))
-                                        .foregroundStyle(.primary)
-                                }
-                                
-                                HStack(spacing: 12) {
-                                    Image(systemName: "birthday.cake.fill")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(.pink)
-                                        .frame(width: 24)
-                                    Text("2008/06/27")
-                                        .font(.system(size: 15, weight: .regular))
-                                        .foregroundStyle(.primary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(18)
-                            .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
-                            .padding(.horizontal, 20)
-                            
-                            // Link Buttons
-                            VStack(spacing: 12) {
-                                LinkButton(
-                                    title: "X (Twitter)",
-                                    icon: "bird.fill",
-                                    url: "https://x.com/nezum1n1um",
-                                    color: .black
-                                )
-                                
-                                LinkButton(
-                                    title: "GitHub Pages",
-                                    icon: "globe",
-                                    url: "https://nezumi0627.github.io/",
-                                    color: .blue
-                                )
-                                
-                                LinkButton(
-                                    title: "Discord",
-                                    icon: "message.fill",
-                                    url: "https://discord.com/users/1248909552171221027",
-                                    color: .purple
-                                )
-                                
-                                LinkButton(
-                                    title: "Amazon ほしいものリスト",
-                                    icon: "cart.fill",
-                                    url: "https://www.amazon.jp/hz/wishlist/ls/11OOP56XMJPUA?ref_=wl_share",
-                                    color: .orange
-                                )
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 40)
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Profile
+                    VStack(spacing: 12) {
+                        AsyncImage(url: URL(string: "https://github.com/nezumi0627.png")) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            ProgressView()
                         }
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                        .glassEffect(in: .circle)
+
+                        Text("ねずみ")
+                            .font(.title2.bold())
+                        Text("@nezumi0627")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
+                    .padding(.top, 24)
+
+                    // Profile details
+                    VStack(spacing: 0) {
+                        ProfileRow(icon: "location.fill", color: .red, text: "Fukuoka, Japan")
+                        Divider().padding(.leading, 52)
+                        ProfileRow(icon: "birthday.cake.fill", color: .pink, text: "2008/06/27")
+                        Divider().padding(.leading, 52)
+                        ProfileRow(icon: "studentdesk", color: .blue, text: "高校生開発者")
+                    }
+                    .glassEffect(in: .rect(cornerRadius: 16))
+                    .padding(.horizontal, 20)
+
+                    // Links
+                    VStack(spacing: 10) {
+                        LinkRow(title: "X (Twitter)", icon: "bird.fill", url: "https://x.com/nezum1n1um")
+                        LinkRow(title: "GitHub Pages", icon: "globe", url: "https://nezumi0627.github.io/")
+                        LinkRow(title: "Discord", icon: "message.fill", url: "https://discord.com/users/1248909552171221027")
+                        LinkRow(title: "Amazon ほしいものリスト", icon: "cart.fill", url: "https://www.amazon.jp/hz/wishlist/ls/11OOP56XMJPUA?ref_=wl_share")
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("閉じる") {
-                        dismiss()
-                    }
-                    .foregroundStyle(.primary)
-                }
-            }
+            .navigationTitle("情報")
         }
     }
 }
 
-struct LinkButton: View {
+// MARK: - Components
+
+struct ProfileRow: View {
+    let icon: String
+    let color: Color
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(color)
+                .frame(width: 28)
+            Text(text)
+                .font(.body)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+}
+
+struct LinkRow: View {
     let title: String
     let icon: String
     let url: String
-    let color: Color
-    
+
     var body: some View {
-        Link(destination: URL(string: url)!) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .symbolVariant(.none)
-                    .foregroundStyle(.white)
-                    .frame(width: 28)
-                
-                Text(title)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                
-                Spacer()
-                
-                Image(systemName: "arrow.up.right.square")
-                    .font(.system(size: 14, weight: .medium))
-                    .symbolVariant(.none)
-                    .foregroundStyle(.white.opacity(0.8))
+        if let linkURL = URL(string: url) {
+            Link(destination: linkURL) {
+                HStack(spacing: 12) {
+                    Image(systemName: icon)
+                        .font(.system(size: 18))
+                        .frame(width: 28)
+                    Text(title)
+                        .font(.body.weight(.medium))
+                    Spacer()
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .glassEffect(.interactive, in: .rect(cornerRadius: 14))
             }
-            .padding(18)
-            .background(color)
-            .glassEffect(.interactive, in: RoundedRectangle(cornerRadius: 16))
+            .buttonStyle(.plain)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 16))
     }
+}
+
+#Preview {
+    InfoView()
 }
