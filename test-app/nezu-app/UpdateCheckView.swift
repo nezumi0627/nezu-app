@@ -24,7 +24,7 @@ struct UpdateView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
-                    .glassEffect(shape: .rect(cornerRadius: 16))
+                    .glassEffect(in: .rect(cornerRadius: 16))
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
 
@@ -39,7 +39,7 @@ struct UpdateView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 40)
-                            .glassEffect(shape: .rect(cornerRadius: 16))
+                            .glassEffect(in: .rect(cornerRadius: 16))
                         } else if let error = updater.error {
                             VStack(spacing: 12) {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -52,7 +52,7 @@ struct UpdateView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 32)
-                            .glassEffect(shape: .rect(cornerRadius: 16))
+                            .glassEffect(in: .rect(cornerRadius: 16))
                         } else if updater.hasUpdate, let latest = updater.latestVersion {
                             VStack(spacing: 16) {
                                 Image(systemName: "arrow.down.circle.fill")
@@ -78,7 +78,7 @@ struct UpdateView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 32)
-                            .glassEffect(shape: .rect(cornerRadius: 16))
+                            .glassEffect(in: .rect(cornerRadius: 16))
                         } else if updater.latestVersion != nil {
                             VStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -89,7 +89,7 @@ struct UpdateView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 40)
-                            .glassEffect(shape: .rect(cornerRadius: 16))
+                            .glassEffect(in: .rect(cornerRadius: 16))
                         }
                     }
                     .padding(.horizontal, 20)

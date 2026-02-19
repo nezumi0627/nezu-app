@@ -37,7 +37,7 @@ struct HomeView: View {
                         .font(.system(size: 56))
                         .foregroundStyle(.tint)
                         .frame(width: 100, height: 100)
-                        .glassEffect(shape: .circle)
+                        .glassEffect(in: .circle)
                         .padding(.top, 40)
 
                     // App name & version
@@ -60,7 +60,7 @@ struct HomeView: View {
                         Divider().padding(.leading, 52)
                         FeatureRow(icon: "hammer.fill", title: "自動ビルド", detail: "GitHub Actions で署名無し IPA を生成")
                     }
-                    .glassEffect(shape: .rect(cornerRadius: 16))
+                    .glassEffect(in: .rect(cornerRadius: 16))
                     .padding(.horizontal, 20)
 
                     // Device info
@@ -73,7 +73,7 @@ struct HomeView: View {
                         #endif
                         InfoRow(label: "Bundle ID", value: Bundle.main.bundleIdentifier ?? "-")
                     }
-                    .glassEffect(shape: .rect(cornerRadius: 16))
+                    .glassEffect(in: .rect(cornerRadius: 16))
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
                 }
