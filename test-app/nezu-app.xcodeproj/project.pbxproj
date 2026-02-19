@@ -14,7 +14,6 @@
 		A1234567890123456789014G /* VersionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789014H /* VersionManager.swift */; };
 		A1234567890123456789014I /* UpdateCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789014J /* UpdateCheckView.swift */; };
 		A1234567890123456789014K /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789014L /* InfoView.swift */; };
-		A1234567890123456789014M /* GlassEffectHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890123456789014N /* GlassEffectHelper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +26,6 @@
 		A1234567890123456789014H /* VersionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionManager.swift; sourceTree = "<group>"; };
 		A1234567890123456789014J /* UpdateCheckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckView.swift; sourceTree = "<group>"; };
 		A1234567890123456789014L /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
-		A1234567890123456789014N /* GlassEffectHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassEffectHelper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,7 +63,6 @@
 				A1234567890123456789014H /* VersionManager.swift */,
 				A1234567890123456789014J /* UpdateCheckView.swift */,
 				A1234567890123456789014L /* InfoView.swift */,
-				A1234567890123456789014N /* GlassEffectHelper.swift */,
 				A1234567890123456789012F /* Assets.xcassets */,
 				A1234567890123456789013D /* Info.plist */,
 				A1234567890123456789014C /* Preview Content */,
@@ -156,7 +153,6 @@
 				A1234567890123456789014G /* VersionManager.swift in Sources */,
 				A1234567890123456789014I /* UpdateCheckView.swift in Sources */,
 				A1234567890123456789014K /* InfoView.swift in Sources */,
-				A1234567890123456789014M /* GlassEffectHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
