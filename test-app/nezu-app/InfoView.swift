@@ -21,7 +21,7 @@ struct InfoView: View {
                         }
                         .frame(width: 80, height: 80)
                         .clipShape(Circle())
-                        .glassEffect(in: .circle)
+                        .glassEffect(shape: .circle)
 
                         Text("ねずみ")
                             .font(.title2.bold())
@@ -39,7 +39,7 @@ struct InfoView: View {
                         Divider().padding(.leading, 52)
                         ProfileRow(icon: "studentdesk", color: .blue, text: "高校生開発者")
                     }
-                    .glassEffect(in: .rect(cornerRadius: 16))
+                    .glassEffect(shape: .rect(cornerRadius: 16))
                     .padding(.horizontal, 20)
 
                     // Links
@@ -101,7 +101,7 @@ struct LinkRow: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
-                .glassEffect(.interactive, in: .rect(cornerRadius: 14))
+                .glassEffect(shape: .rect(cornerRadius: 14), interactive: true)
             }
             .buttonStyle(.plain)
         }
