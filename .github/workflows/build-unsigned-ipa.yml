@@ -102,9 +102,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: DerivedData
-          key: deriveddata-${{ runner.os }}-${{ hashFiles('test-app/**/*.swift') }}
+          key: deriveddata-v2-${{ runner.os }}-${{ hashFiles('test-app/**/*.swift') }}
           restore-keys: |
-            deriveddata-${{ runner.os }}-
+            deriveddata-v2-${{ runner.os }}-
 
       # =========================================================
       # Build
