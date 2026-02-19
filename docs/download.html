@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nezu App - IPA ダウンロード</title>
+  <meta name="description" content="Nezu App の IPA ファイルをダウンロード">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #111111;
+      color: #e8e8e8;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    a {
+      color: #6cb4ff;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    header {
+      padding: 32px 0 24px;
+      border-bottom: 1px solid #2a2a2a;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    header p {
+      color: #888888;
+      font-size: 0.85rem;
+    }
+
+    .stats {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .stats div {
+      font-size: 0.8rem;
+      color: #888888;
+    }
+
+    .stats div span {
+      color: #e8e8e8;
+      font-weight: 600;
+    }
+
+    .card {
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      background-color: #1a1a1a;
+    }
+
+    .card.latest {
+      border-color: #3b6ec2;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+
+    .badge-latest {
+      background-color: #1a3a5c;
+      color: #6cb4ff;
+    }
+
+    .badge-pre {
+      background-color: #3a2a10;
+      color: #d4a04a;
+    }
+
+    .dl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      background-color: #2563eb;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .dl-btn:hover {
+      background-color: #1d4ed8;
+      text-decoration: none;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+
+    .meta dt {
+      color: #666666;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .meta dd {
+      color: #cccccc;
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+
+    .meta dd.mono {
+      font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+      font-size: 0.73rem;
+      color: #77cccc;
+    }
+
+    details {
+      margin-top: 10px;
+      font-size: 0.78rem;
+    }
+
+    details summary {
+      color: #888888;
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 4px 0;
+    }
+
+    details summary:hover {
+      color: #bbbbbb;
+    }
+
+    .sha {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background-color: #141414;
+      border: 1px solid #252525;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: #77cccc;
+      word-break: break-all;
+    }
+
+    .commits {
+      margin-top: 8px;
+      list-style: none;
+    }
+
+    .commits li {
+      padding: 3px 0;
+      border-bottom: 1px solid #1e1e1e;
+      display: flex;
+      gap: 8px;
+    }
+
+    .commits li:last-child {
+      border-bottom: none;
+    }
+
+    .commits code {
+      color: #a78bfa;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+
+    .commits span {
+      color: #999999;
+    }
+
+    .env-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 4px 12px;
+      margin-top: 8px;
+    }
+
+    .env-grid dt {
+      color: #666666;
+      font-size: 0.65rem;
+    }
+
+    .env-grid dd {
+      color: #aaaaaa;
+      font-size: 0.75rem;
+      margin-bottom: 4px;
+    }
+
+    .loading, .error {
+      text-align: center;
+      padding: 60px 0;
+      color: #888888;
+    }
+
+    .error button {
+      margin-top: 12px;
+      padding: 6px 16px;
+      background-color: #222222;
+      border: 1px solid #444444;
+      color: #cccccc;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    footer {
+      border-top: 1px solid #2a2a2a;
+      padding: 20px 0;
+      text-align: center;
+      font-size: 0.72rem;
+      color: #555555;
+    }
+
+    footer a {
+      color: #666666;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Nezu App</h1>
+      <p>署名無し IPA ダウンロード — GitHub Actions ビルド</p>
+    </header>
+
+    <div class="stats" id="stats">
+      <div>リリース: <span id="s-rel">-</span></div>
+      <div>総DL数: <span id="s-dl">-</span></div>
+      <div>最新: <span id="s-latest">-</span></div>
+    </div>
+
+    <div id="app">
+      <div class="loading">読み込み中...</div>
+    </div>
+
+    <footer>
+      <a href="https://github.com/nezumi0627/nezu-app">GitHub</a> &middot; &copy; 2025 nezumi0627
+    </footer>
+  </div>
+
+  <script>
+    var API_URL = "https://api.github.com/repos/nezumi0627/nezu-app/releases";
+
+    function fmtBytes(b) {
+      if (!b) return "0 B";
+      var units = ["B", "KB", "MB"];
+      var i = Math.floor(Math.log(b) / Math.log(1024));
+      return (b / Math.pow(1024, i)).toFixed(i ? 1 : 0) + " " + units[i];
+    }
+
+    function fmtDate(s) {
+      var d = new Date(s);
+      var Y = d.getFullYear();
+      var M = String(d.getMonth() + 1).padStart(2, "0");
+      var D = String(d.getDate()).padStart(2, "0");
+      var h = String(d.getHours()).padStart(2, "0");
+      var m = String(d.getMinutes()).padStart(2, "0");
+      return Y + "/" + M + "/" + D + " " + h + ":" + m;
+    }
+
+    function ago(s) {
+      var days = Math.floor((Date.now() - new Date(s)) / 86400000);
+      if (days < 1) return "今日";
+      if (days === 1) return "昨日";
+      if (days < 30) return days + "日前";
+      if (days < 365) return Math.floor(days / 30) + "ヶ月前";
+      return Math.floor(days / 365) + "年前";
+    }
+
+    function buildNum(tag) {
+      var m = tag.match(/build-(\d+)/);
+      return m ? "#" + m[1] : tag;
+    }
+
+    function getVersion(release) {
+      var t = release.tag_name;
+      if (t.startsWith("v")) return t.slice(1);
+      var m = t.match(/build-(\d+)/);
+      if (m) return "1.0.0 (Build " + m[1] + ")";
+      return t;
+    }
+
+    function extractFromBody(body, regex) {
+      if (!body) return null;
+      var m = body.match(regex);
+      return m ? m[1] : null;
+    }
+
+    function getCommits(body) {
+      if (!body) return [];
+      var results = [];
+      var regex = /`([a-f0-9]{7})`\s+\S+\s+\*\*.*?\*\*:\s*(.*)/g;
+      var match;
+      while ((match = regex.exec(body)) !== null) {
+        results.push({ hash: match[1], msg: match[2] });
+      }
+      return results;
+    }
+
+    function getEnvInfo(body) {
+      if (!body) return {};
+      var info = {};
+      var get = function(key) {
+        var re = new RegExp(key + "\\*\\*:\\s*(.+?)[\r\n]");
+        var m = body.match(re);
+        return m ? m[1].replace(/`/g, "").trim() : null;
+      };
+      info.xcode = get("Xcode Version");
+      info.sdk = get("iOS SDK Version");
+      info.swift = get("Swift Version");
+      info.runner = get("Runner OS");
+      return info;
+    }
+
+    function renderCard(release, index) {
+      var ipa = null;
+      for (var a = 0; a < release.assets.length; a++) {
+        if (release.assets[a].name.endsWith(".ipa")) {
+          ipa = release.assets[a];
+          break;
+        }
+      }
+      if (!ipa) return "";
+
+      var isLatest = index === 0;
+      var version = getVersion(release);
+      var sha = extractFromBody(release.body, /SHA256[`:\s]*`([a-f0-9]{64})`/i);
+      var duration = extractFromBody(release.body, /Duration.*?(\d{2}:\d{2}:\d{2})/);
+      var commits = getCommits(release.body);
+      var env = getEnvInfo(release.body);
+      var hashMatch = ipa.name.match(/([a-f0-9]{7})\.ipa/);
+      var commitHash = hashMatch ? hashMatch[1] : "";
+
+      var html = '<div class="card' + (isLatest ? " latest" : "") + '">';
+
+      // Top row
+      html += '<div class="card-top"><div>';
+      html += '<span class="card-title">' + version + "</span>";
+      if (isLatest) html += '<span class="badge badge-latest">最新</span>';
+      if (release.prerelease) html += '<span class="badge badge-pre">Pre</span>';
+      html += "</div>";
+      html += '<a class="dl-btn" href="' + ipa.browser_download_url + '">';
+      html += "\u2B07 DL (" + fmtBytes(ipa.size) + ")</a>";
+      html += "</div>";
+
+      // Meta grid
+      html += '<dl class="meta">';
+      html += "<dt>公開日</dt><dd>" + fmtDate(release.published_at) + " (" + ago(release.published_at) + ")</dd>";
+      html += '<dt>ファイル</dt><dd class="mono">' + ipa.name + "</dd>";
+      html += "<dt>DL数</dt><dd>" + ipa.download_count + " 回</dd>";
+      html += '<dt>タグ</dt><dd class="mono">' + release.tag_name + "</dd>";
+      if (duration) html += "<dt>ビルド時間</dt><dd>" + duration + "</dd>";
+      if (commitHash) html += '<dt>コミット</dt><dd class="mono">' + commitHash + "</dd>";
+      html += "</dl>";
+
+      // Details
+      html += "<details><summary>詳細情報</summary>";
+      if (sha) {
+        html += '<div class="sha">SHA256: ' + sha + "</div>";
+      }
+
+      var hasEnv = env.xcode || env.sdk || env.swift || env.runner;
+      if (hasEnv) {
+        html += '<dl class="env-grid">';
+        if (env.xcode) html += "<dt>Xcode</dt><dd>" + env.xcode + "</dd>";
+        if (env.sdk) html += "<dt>iOS SDK</dt><dd>" + env.sdk + "</dd>";
+        if (env.swift) html += "<dt>Swift</dt><dd>" + env.swift + "</dd>";
+        if (env.runner) html += "<dt>Runner</dt><dd>" + env.runner + "</dd>";
+        html += "</dl>";
+      }
+
+      if (commits.length > 0) {
+        html += '<ul class="commits">';
+        var max = Math.min(commits.length, 5);
+        for (var c = 0; c < max; c++) {
+          html += "<li><code>" + commits[c].hash + "</code><span>" + commits[c].msg + "</span></li>";
+        }
+        html += "</ul>";
+      }
+
+      html += "</details></div>";
+      return html;
+    }
+
+    function load() {
+      var el = document.getElementById("app");
+      el.innerHTML = '<div class="loading">読み込み中...</div>';
+
+      fetch(API_URL, {
+        headers: { Accept: "application/vnd.github.v3+json" }
+      })
+        .then(function(res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        })
+        .then(function(data) {
+          var list = data.filter(function(r) {
+            return !r.draft && r.assets.some(function(a) { return a.name.endsWith(".ipa"); });
+          });
+          list.sort(function(a, b) {
+            return new Date(b.published_at) - new Date(a.published_at);
+          });
+
+          var totalDL = 0;
+          for (var i = 0; i < list.length; i++) {
+            for (var j = 0; j < list[i].assets.length; j++) {
+              totalDL += list[i].assets[j].download_count;
+            }
+          }
+
+          document.getElementById("s-rel").textContent = list.length;
+          document.getElementById("s-dl").textContent = totalDL;
+          if (list.length > 0) {
+            document.getElementById("s-latest").textContent = buildNum(list[0].tag_name);
+          }
+
+          if (list.length === 0) {
+            el.innerHTML = '<div class="error">リリースが見つかりません</div>';
+            return;
+          }
+
+          var html = "";
+          for (var k = 0; k < list.length; k++) {
+            html += renderCard(list[k], k);
+          }
+          el.innerHTML = html;
+        })
+        .catch(function(err) {
+          el.innerHTML = '<div class="error">取得失敗: ' + err.message +
+            '<br><button onclick="load()">再試行</button></div>';
+        });
+    }
+
+    load();
+  </script>
+</body>
+</html>
