@@ -2,27 +2,64 @@
 
 [English](./en/update-mechanism.md)
 
-Nezu App は、手動での確認を不要にするカスタムの Over-The-Air (OTA) 更新システムを備えています。
+Nezu App は GitHub Releases を利用した OTA (Over-The-Air) 更新システムを備えています。
 
-## 📡 VersionManager のロジック
-`VersionManager` クラスは更新システムの核心です。
+## 📡 VersionManager
 
-### 情報の取得
-GitHub API からリリースデータを取得します：
-`GET https://api.github.com/repos/nezumi0627/nezu-app/releases`
+`VersionManager` クラス (`test-app/nezu-app/VersionManager.swift`) が更新チェックの中核です。
 
-### バージョンの解析
-タグベースのバージョニングシステムを使用しています：
-- **形式**: `build-{BUILD_NUMBER}-{COMMIT_HASH}`
-- **ロジック**: マネージャーは `{BUILD_NUMBER}` を抽出し、ローカルの `CFBundleVersion` と比較します。
+### 動作フロー
 
-### ダウンロード戦略
-更新が見つかった場合：
-1. アプリは最新リリース内の `.ipa` アセットを特定します。
-2. `browser_download_url` を保存します。
-3. UI に「IPA をダウンロード」ボタンを表示し、システムブラウザで URL を開きます。
+```
+1. GitHub API からリリース一覧を取得
+   GET https://api.github.com/repos/nezumi0627/nezu-app/releases
 
-## 💻 クロスプラットフォーム互換性
-`VersionManager` は可能な限りプラットフォームに依存しないように書かれています：
-- **iOS**: `UIApplication` を使用してダウンロードリンクを開きます。
-- **その他 (Windows/CLI)**: デバッグ用に URL を出力します。
+2. Draft リリースを除外し、公開済みリリースのみをフィルタ
+
+3. 最新リリースのタグ名からバージョンを解析
+   - v{MAJOR}.{MINOR}.{PATCH} 形式 → バージョン文字列を抽出
+   - build-{BUILD_NUMBER}-{HASH} 形式 → ビルド番号を抽出
+
+4. ローカルの CFBundleShortVersionString / CFBundleVersion と比較
+
+5. 最新版が新しい場合 → 更新通知を表示
+```
+
+### バージョン比較ロジック
+
+`AppVersion` 構造体が `major.minor.patch.build` の4段階で比較します:
+
+```swift
+// 比較順序: major → minor → patch → build
+func compare(to other: AppVersion) -> ComparisonResult
+```
+
+## 📥 ダウンロード
+
+更新が見つかった場合:
+
+1. 最新リリースの `.ipa` アセットを特定
+2. `browser_download_url` を保存
+3. UI に「IPA をダウンロード」ボタンを表示
+4. iOS の場合、`UIApplication.shared.open(url)` でシステムブラウザ経由でダウンロード
+
+## 🌐 Web ダウンロードページ
+
+`docs/download.html` では、ブラウザから直接 IPA をダウンロードすることもできます。
+
+- GitHub API をリアルタイムで取得
+- 全リリースの一覧・バージョン・公開日時・ファイルサイズを表示
+- SHA256 ハッシュによるファイル検証
+- 詳細情報（ビルド環境・コミット履歴）を折りたたみで表示
+
+## 🔄 CI/CD との連携
+
+ビルドは `Info.plist` のバージョンが変更された場合のみ実行されます（[ビルドプロセス](./build-process.md)を参照）。
+
+新しいバージョンをリリースするには:
+
+1. `Info.plist` の `CFBundleShortVersionString` / `CFBundleVersion` を更新
+2. `main` ブランチにプッシュ
+3. → バージョン変更を検知 → ビルド実行 → Draft Release 作成
+4. GitHub で Draft Release を公開
+5. → アプリ / Web ページで最新版が表示される

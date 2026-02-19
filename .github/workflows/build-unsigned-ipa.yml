@@ -3,15 +3,74 @@ name: Build Unsigned IPA
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
+    paths:
+      - "test-app/**"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  # ===========================================================
+  # Step 1: Check if version changed
+  # ===========================================================
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.check.outputs.version }}
+      build_number: ${{ steps.check.outputs.build_number }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for version change
+        id: check
+        run: |
+          set -e
+          PLIST="test-app/nezu-app/Info.plist"
+
+          # 現在のバージョンを取得
+          CURRENT_VERSION=$(grep -A1 'CFBundleShortVersionString' "$PLIST" | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+          CURRENT_BUILD=$(grep -A1 'CFBundleVersion' "$PLIST" | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+
+          echo "Current version: $CURRENT_VERSION (build $CURRENT_BUILD)"
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$CURRENT_BUILD" >> $GITHUB_OUTPUT
+
+          # workflow_dispatch の場合は常にビルド
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger — building"
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 前回のコミットのバージョンを取得
+          if git show HEAD~1:"$PLIST" > /dev/null 2>&1; then
+            PREV_VERSION=$(git show HEAD~1:"$PLIST" | grep -A1 'CFBundleShortVersionString' | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+            PREV_BUILD=$(git show HEAD~1:"$PLIST" | grep -A1 'CFBundleVersion' | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+            echo "Previous version: $PREV_VERSION (build $PREV_BUILD)"
+
+            if [ "$CURRENT_VERSION" != "$PREV_VERSION" ] || [ "$CURRENT_BUILD" != "$PREV_BUILD" ]; then
+              echo "Version changed: $PREV_VERSION.$PREV_BUILD -> $CURRENT_VERSION.$CURRENT_BUILD"
+              echo "should_build=true" >> $GITHUB_OUTPUT
+            else
+              echo "Version unchanged — skipping build"
+              echo "should_build=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "No previous commit for Info.plist — building"
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ===========================================================
+  # Step 2: Build (only if version changed)
+  # ===========================================================
   build:
+    needs: check-version
+    if: needs.check-version.outputs.should_build == 'true'
     runs-on: macos-latest
 
     steps:
@@ -34,7 +93,6 @@ jobs:
       - name: Xcode info
         run: |
           xcodebuild -version
-          xcode-select -p
           swift --version || true
 
       # =========================================================
@@ -44,9 +102,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: DerivedData
-          key: deriveddata-${{ runner.os }}
+          key: deriveddata-${{ runner.os }}-${{ hashFiles('test-app/**/*.swift') }}
           restore-keys: |
-            deriveddata-
+            deriveddata-${{ runner.os }}-
 
       # =========================================================
       # Build
@@ -57,18 +115,15 @@ jobs:
           cd test-app
 
           if ls *.xcworkspace >/dev/null 2>&1; then
-            TARGET_TYPE="workspace"
             TARGET_FILE=$(ls *.xcworkspace | head -n1)
             SCHEME=$(xcodebuild -list -workspace "$TARGET_FILE" | awk '/Schemes:/ {getline; gsub(/^[ \t]+|[ \t]+$/, ""); print}')
             TARGET_ARGS=(-workspace "$TARGET_FILE")
           else
-            TARGET_TYPE="project"
             TARGET_FILE="nezu-app.xcodeproj"
             SCHEME=$(xcodebuild -list -project "$TARGET_FILE" | awk '/Schemes:/ {getline; gsub(/^[ \t]+|[ \t]+$/, ""); print}')
             TARGET_ARGS=(-project "$TARGET_FILE")
           fi
 
-          echo "Target: $TARGET_TYPE $TARGET_FILE"
           echo "Scheme: $SCHEME"
 
           xcodebuild \
@@ -104,15 +159,19 @@ jobs:
           set -e
           APP_PATH="${{ steps.find_app.outputs.APP_PATH }}"
           APP_NAME=$(basename "$APP_PATH" .app)
+          VERSION="${{ needs.check-version.outputs.version }}"
+          BUILD_NUM="${{ needs.check-version.outputs.build_number }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
 
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
 
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          IPA_NAME="${APP_NAME}-unsigned-${{ github.run_number }}-${SHORT_SHA}.ipa"
+          IPA_NAME="${APP_NAME}-v${VERSION}-build${BUILD_NUM}-${SHORT_SHA}.ipa"
 
           zip -qr "$IPA_NAME" Payload
           echo "IPA_NAME=$IPA_NAME" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "BUILD_NUM=$BUILD_NUM" >> $GITHUB_ENV
           echo "Created $IPA_NAME"
 
       # =========================================================
@@ -138,32 +197,56 @@ jobs:
           echo "IPA_SIZE_HUMAN=$SIZE_HUMAN" >> $GITHUB_ENV
           echo "IPA_SHA256=$SHA256" >> $GITHUB_ENV
 
-          git log -10 --pretty=format:'- `%h` %s' > commits.md
+          XCODE_VER=$(xcodebuild -version | head -n1)
+          SWIFT_VER=$(swift --version 2>/dev/null | head -n1 || echo "unknown")
+          SDK_VER=$(xcodebuild -showsdks 2>/dev/null | grep -i iphoneos | head -n1 | sed 's/.*iphoneos//' || echo "unknown")
+
+          git log -10 --pretty=format:'- `%h` %ad **%an**: %s' --date=short > commits.md
 
           cat > release-body.md <<EOF
-          ## Unsigned IPA Build
+          ## Nezu App v${VERSION} (Build ${BUILD_NUM})
 
+          - **Version**: \`${VERSION}\`
+          - **Build**: \`${BUILD_NUM}\`
           - **Commit**: \`${{ github.sha }}\`
           - **Branch**: \`${{ github.ref_name }}\`
           - **Run**: #${{ github.run_number }}
-          - **IPA**: \`$IPA_NAME\`
-          - **Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
-          - **SHA256**: \`$SHA256\`
+          - **IPA File**: \`$IPA_NAME\`
+          - **IPA Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
+          - **IPA SHA256**: \`$SHA256\`
 
-          ### Commits
+          ### Build Environment
+
+          - **Xcode Version**: $XCODE_VER
+          - **iOS SDK Version**: $SDK_VER
+          - **Swift Version**: $SWIFT_VER
+          - **Runner OS**: $RUNNER_OS ($RUNNER_ARCH)
+
+          ### Commits included in this build (latest 10)
+
           $(cat commits.md)
 
-          **Note:** This IPA is unsigned. Use SideStore to install.
+          ### インストール方法
+
+          1. 下の Assets から \`.ipa\` ファイルをダウンロード
+          2. SideStore で署名してインストール
+
+          **注意**: このIPAは署名無しです。
           EOF
 
           cat > build-metadata.json <<EOF
           {
+            "version": "$VERSION",
+            "build": "$BUILD_NUM",
             "ipa": "$IPA_NAME",
             "size_bytes": $SIZE_BYTES,
             "sha256": "$SHA256",
             "commit": "${{ github.sha }}",
             "branch": "${{ github.ref_name }}",
-            "run": ${{ github.run_number }}
+            "run": ${{ github.run_number }},
+            "xcode": "$XCODE_VER",
+            "swift": "$SWIFT_VER",
+            "sdk": "$SDK_VER"
           }
           EOF
 
@@ -182,11 +265,11 @@ jobs:
       # =========================================================
       # Release
       # =========================================================
-      - name: Create draft release
+      - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Unsigned IPA Build #${{ github.run_number }}
+          tag_name: v${{ env.VERSION }}-build${{ env.BUILD_NUM }}
+          name: "Nezu App v${{ env.VERSION }} (Build ${{ env.BUILD_NUM }})"
           body_path: release-body.md
           draft: true
           files: ${{ env.IPA_NAME }}
@@ -199,7 +282,25 @@ jobs:
           {
             echo "# ✅ Build Completed"
             echo ""
+            echo "- **Version:** v${VERSION} (Build ${BUILD_NUM})"
             echo "- **IPA:** \`$IPA_NAME\`"
             echo "- **Size:** $IPA_SIZE_HUMAN"
             echo "- **SHA256:** \`$IPA_SHA256\`"
+          } >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================
+  # Step 3: Skip notification
+  # ===========================================================
+  skip-notice:
+    needs: check-version
+    if: needs.check-version.outputs.should_build == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip Summary
+        run: |
+          {
+            echo "# ⏭️ Build Skipped"
+            echo ""
+            echo "Version unchanged (v${{ needs.check-version.outputs.version }}, build ${{ needs.check-version.outputs.build_number }})."
+            echo "Update \`CFBundleShortVersionString\` or \`CFBundleVersion\` in \`Info.plist\` to trigger a new build."
           } >> $GITHUB_STEP_SUMMARY
