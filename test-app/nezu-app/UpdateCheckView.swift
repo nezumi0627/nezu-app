@@ -37,9 +37,6 @@ struct UpdateView: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
-                            .glassEffect(in: .rect(cornerRadius: 16))
                         } else if let error = updater.error {
                             VStack(spacing: 12) {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -50,9 +47,6 @@ struct UpdateView: View {
                                     .foregroundStyle(.secondary)
                                     .multilineTextAlignment(.center)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 32)
-                            .glassEffect(in: .rect(cornerRadius: 16))
                         } else if updater.hasUpdate, let latest = updater.latestVersion {
                             VStack(spacing: 16) {
                                 Image(systemName: "arrow.down.circle.fill")
@@ -76,9 +70,6 @@ struct UpdateView: View {
                                     .font(.caption)
                                     .foregroundStyle(.tertiary)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 32)
-                            .glassEffect(in: .rect(cornerRadius: 16))
                         } else if updater.latestVersion != nil {
                             VStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -87,11 +78,11 @@ struct UpdateView: View {
                                 Text("最新バージョンです")
                                     .font(.headline)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
-                            .glassEffect(in: .rect(cornerRadius: 16))
                         }
                     }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 220) // 固定サイズ
+                    .glassEffect(in: .rect(cornerRadius: 16))
                     .padding(.horizontal, 20)
 
                     // Check button

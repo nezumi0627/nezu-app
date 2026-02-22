@@ -226,12 +226,17 @@ jobs:
           ### 📲 インストール (Source Repository)
 
           > [!IMPORTANT]
-          > このアプリを常に最新の状態に保つには、以下のソースを **SideStore** または **AltStore** に追加することをお勧めします。
+          > このアプリを常に最新の状態に保つには、以下のソースをインストーラーに追加することをお勧めします。
 
-          **Source URL:**
-          \`\`\`text
+          **SideStore / AltStore 用:**
+          ```text
           https://nezumi0627.github.io/nezu-app/apps.json
-          \`\`\`
+          ```
+
+          **LiveContainer 用:**
+          ```text
+          livecontainer://source?url=aHR0cHM6Ly9uZXp1bWkwNjI3LmdpdGh1Yi5pby9uZXp1LWFwcC9hcHBzLmpzb24=
+          ```
 
           ### 🏗️ 手動インストール (Copy & Paste)
 
@@ -239,9 +244,9 @@ jobs:
           > 特別にこのバージョンのみをインストールしたい場合は、以下のURLをコピーしてブラウザ等で開いてください。
 
           **SideStore 用:**
-          \`\`\`text
+          ```text
           sidestore://install?url=$ENCODED_URL
-          \`\`\`
+          ```
 
           ### Build Environment
 
