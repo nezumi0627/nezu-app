@@ -33,14 +33,20 @@ Semantic versioning with 4-level comparison: `major.minor.patch.build`
 // Comparison order: major → minor → patch → build number
 ```
 
-## 📥 Download
+## 📥 Installer Integration
 
-When an update is found:
+When an update is found, you can trigger a direct installation without manually downloading via a browser.
 
-1. Identify the `.ipa` asset in the latest release
-2. Store the `browser_download_url`
-3. Display a "Download IPA" button in the UI
-4. On iOS, open the URL via `UIApplication.shared.open(url)`
+### SideStore / AltStore Integration
+
+`VersionManager` checks if **SideStore** or **AltStore** is installed on the device and delivers the IPA URL directly via URL Schemes.
+
+1. Locate the `.ipa` asset from the latest release.
+2. Percent-encode the `browser_download_url`.
+3. If an installer is found, open the following URL Scheme:
+   - `sidestore://install?url={ENCODED_URL}`
+   - `altstore://install?url={ENCODED_URL}`
+4. Only if no compatible installer is found, it falls back to downloading the IPA via the system browser.
 
 ## 🌐 Web Download Page
 

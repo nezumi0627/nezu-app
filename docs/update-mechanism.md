@@ -34,14 +34,20 @@ Nezu App は GitHub Releases を利用した OTA (Over-The-Air) 更新システ�
 func compare(to other: AppVersion) -> ComparisonResult
 ```
 
-## 📥 ダウンロード
+## 📥 インストール連携
 
-更新が見つかった場合:
+更新が見つかった場合、ブラウザを介さず直接インストーラーを起動することができます。
+
+### SideStore / AltStore 連携
+
+`VersionManager` は端末に **SideStore** または **AltStore** がインストールされているか確認し、URL Scheme を通じて直接 IPA を引き渡します。
 
 1. 最新リリースの `.ipa` アセットを特定
-2. `browser_download_url` を保存
-3. UI に「IPA をダウンロード」ボタンを表示
-4. iOS の場合、`UIApplication.shared.open(url)` でシステムブラウザ経由でダウンロード
+2. `browser_download_url` をパーセントエンコード
+3. インストーラーが存在する場合、以下の URL Scheme を開く:
+   - `sidestore://install?url={ENCODED_URL}`
+   - `altstore://install?url={ENCODED_URL}`
+4. インストーラーが見つからない場合のみ、システムブラウザで IPA を直接ダウンロードします。
 
 ## 🌐 Web ダウンロードページ
 

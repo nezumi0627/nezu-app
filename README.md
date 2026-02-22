@@ -16,7 +16,7 @@ nezu-app/
 │       ├── ContentView.swift    ← メイン画面 (TabView + HomeView)
 │       ├── InfoView.swift       ← 開発者情報画面
 │       ├── UpdateCheckView.swift← OTA 更新チェック画面 (UpdateView)
-│       ├── VersionManager.swift ← GitHub Releases API バージョン比較
+│       ├── VersionManager.swift ← GitHub Releases API バージョン比較 & SideStore 連携
 │       ├── Info.plist           ← アプリメタデータ (v2.0.0)
 │       └── Assets.xcassets/     ← アセットカタログ
 ├── docs/
@@ -36,8 +36,9 @@ nezu-app/
 
 | 機能                       | 説明                                              |
 | -------------------------- | ------------------------------------------------- |
-| **Liquid Glass UI**        | iOS 26 公式 `.glassEffect()` API を使用           |
+| **Liquid Glass UI**        | iOS 26 正式 `.glassEffect(in:)` API を使用        |
 | **OTA 更新**               | GitHub Releases から最新バージョンを自動チェック  |
+| **インストーラー連携**     | **SideStore / AltStore** をアプリ内から直接起動   |
 | **自動ビルド**             | `Info.plist` のバージョン変更時のみ CI ビルド実行 |
 | **IPA ダウンロードページ** | `docs/download.html` で Web からも DL 可能        |
 
@@ -51,7 +52,7 @@ nezu-app/
 | `ContentView.swift`     | `TabView` で 3 画面を管理: ホーム / 更新 / 情報                 |
 | `InfoView.swift`        | 開発者プロフィール、SNS リンク                                  |
 | `UpdateCheckView.swift` | `VersionManager` を使った更新チェック UI                        |
-| `VersionManager.swift`  | GitHub API 通信、セマンティックバージョン比較、IPA DL           |
+| `VersionManager.swift`  | GitHub API 通信、セマンティックバージョン比較、SideStore 連携   |
 
 ### iOS 26 Liquid Glass の使い方
 
@@ -61,35 +62,29 @@ Text("Hello")
     .padding()
     .glassEffect(in: .rect(cornerRadius: 16))
 
-// インタラクティブなガラス効果
-Button("Tap") { }
-    .glassEffect(.interactive, in: .capsule)
+// インタラクティブなガラス効果（タッチで反応）
+// .regular (variant) に対して .interactive() を呼び出します
+Link("Link") { }
+    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
 
 // グラスボタンスタイル
 Button("Action") { }
     .buttonStyle(.glass)
-
-// ガラスエフェクトコンテナ — 複数のガラス要素をグループ化
-GlassEffectContainer {
-    VStack {
-        // 子要素にそれぞれ .glassEffect() を適用
-    }
-}
 ```
 
 ## 🚀 クイックスタート
 
 ### ビルド & リリース
 
-1. `test-app/nezu-app/Info.plist` のバージョンを変更
+1. `test-app/nezu-app/Info.plist` のバージョンまたはビルド番号を変更
    ```xml
-   <key>CFBundleShortVersionString</key>
-   <string>2.1.0</string>  <!-- ← 変更 -->
+   <key>CFBundleVersion</key>
+   <string>8</string>  <!-- ← 変更 -->
    ```
 2. `main` ブランチにプッシュ
-3. GitHub Actions がバージョン変更を検知 → 自動ビルド
+3. GitHub Actions が変更を検知 → 自動ビルド
 4. **Releases** タブで Draft を公開
-5. SideStore で IPA をインストール
+5. アプリ内の「更新」タブから **SideStore** を経由してインストール
 
 ### ダウンロードページ
 
