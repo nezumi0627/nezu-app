@@ -226,10 +226,18 @@ jobs:
 
           $(cat commits.md)
 
-          ### インストール方法
+          ### 📲 インストール (One-click Install)
 
-          1. 下の Assets から \`.ipa\` ファイルをダウンロード
-          2. SideStore で署名してインストール
+          > [!TIP]
+          > SideStore または AltStore がインストールされている場合、以下のリンクから直接インストールを開始できます。
+
+          - [🚀 SideStore でインストール](sidestore://install?url=https://github.com/nezumi0627/nezu-app/releases/download/v${VERSION}-build${BUILD_NUM}/${IPA_NAME})
+          - [🚀 AltStore でインストール](altstore://install?url=https://github.com/nezumi0627/nezu-app/releases/download/v${VERSION}-build${BUILD_NUM}/${IPA_NAME})
+
+          ### 🏗️ 手動インストール
+
+          1. 下の Assets から `.ipa` ファイルをダウンロード
+          2. SideStore 等で署名してインストール
 
           **注意**: このIPAは署名無しです。
           EOF
