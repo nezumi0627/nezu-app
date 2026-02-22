@@ -214,54 +214,54 @@ jobs:
 
           # リリース本文の作成 (バックティックをエスケープして確実に表示させる)
           cat > release-body.md <<EOF
-## Nezu App v${VERSION} (Build ${BUILD_NUM})
+          ## Nezu App v${VERSION} (Build ${BUILD_NUM})
 
-- **Version**: \`${VERSION}\`
-- **Build**: \`${BUILD_NUM}\`
-- **Commit**: \`${{ github.sha }}\`
-- **Branch**: \`${{ github.ref_name }}\`
-- **Run**: #${{ github.run_number }}
-- **IPA File**: \`$IPA_NAME\`
-- **IPA Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
-- **IPA SHA256**: \`$SHA256\`
+          - **Version**: \`${VERSION}\`
+          - **Build**: \`${BUILD_NUM}\`
+          - **Commit**: \`${{ github.sha }}\`
+          - **Branch**: \`${{ github.ref_name }}\`
+          - **Run**: #${{ github.run_number }}
+          - **IPA File**: \`$IPA_NAME\`
+          - **IPA Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
+          - **IPA SHA256**: \`$SHA256\`
 
-### 📲 インストール (Source Repository)
+          ### 📲 インストール (Source Repository)
 
-> [!IMPORTANT]
-> このアプリを常に最新の状態に保つには、以下のソースをインストーラーに追加することをお勧めします。
+          > [!IMPORTANT]
+          > このアプリを常に最新の状態に保つには、以下のソースをインストーラーに追加することをお勧めします。
 
-**SideStore / AltStore 用:**
-\`\`\`text
-https://nezumi0627.github.io/nezu-app/apps.json
-\`\`\`
+          **SideStore / AltStore 用:**
+          \`\`\`text
+          https://nezumi0627.github.io/nezu-app/apps.json
+          \`\`\`
 
-**LiveContainer 用:**
-\`\`\`text
-livecontainer://source?url=aHR0cHM6Ly9uZXp1bWkwNjI3LmdpdGh1Yi5pby9uZXp1LWFwcC9hcHBzLmpzb24=
-\`\`\`
+          **LiveContainer 用:**
+          \`\`\`text
+          livecontainer://source?url=aHR0cHM6Ly9uZXp1bWkwNjI3LmdpdGh1Yi5pby9uZXp1LWFwcC9hcHBzLmpzb24=
+          \`\`\`
 
-### 🏗️ 手動インストール (Copy & Paste)
+          ### 🏗️ 手動インストール (Copy & Paste)
 
-> [!NOTE]
-> 特別にこのバージョンのみをインストールしたい場合は、以下のURLをコピーしてブラウザ等で開いてください。
+          > [!NOTE]
+          > 特別にこのバージョンのみをインストールしたい場合は、以下のURLをコピーしてブラウザ等で開いてください。
 
-**SideStore 用:**
-\`\`\`text
-sidestore://install?url=$ENCODED_URL
-\`\`\`
+          **SideStore 用:**
+          \`\`\`text
+          sidestore://install?url=$ENCODED_URL
+          \`\`\`
 
-### Build Environment
+          ### Build Environment
 
-- **Xcode Version**: $XCODE_VER
-- **iOS SDK Version**: $SDK_VER
-- **Swift Version**: $SWIFT_VER
+          - **Xcode Version**: $XCODE_VER
+          - **iOS SDK Version**: $SDK_VER
+          - **Swift Version**: $SWIFT_VER
 
-### Commits included in this build (latest 10)
+          ### Commits included in this build (latest 10)
 
-$(cat commits.md)
+          $(cat commits.md)
 
-**注意**: このIPAは署名無しです。公開リリース後に有効になります。
-EOF
+          **注意**: このIPAは署名無しです。公開リリース後に有効になります。
+          EOF
 
           cat > build-metadata.json <<EOF
           {
