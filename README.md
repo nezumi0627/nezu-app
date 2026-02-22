@@ -34,13 +34,14 @@ nezu-app/
 
 ## ✨ 機能
 
-| 機能                       | 説明                                              |
-| -------------------------- | ------------------------------------------------- |
-| **Liquid Glass UI**        | iOS 26 正式 `.glassEffect(in:)` API を使用        |
-| **OTA 更新**               | GitHub Releases から最新バージョンを自動チェック  |
-| **インストーラー連携**     | **SideStore / AltStore** をアプリ内から直接起動   |
-| **自動ビルド**             | `Info.plist` のバージョン変更時のみ CI ビルド実行 |
-| **IPA ダウンロードページ** | `docs/download.html` で Web からも DL 可能        |
+| 機能                       | 説明                                                |
+| -------------------------- | --------------------------------------------------- |
+| **Liquid Glass UI**        | iOS 26 正式 `.glassEffect(in:)` API を使用          |
+| **OTA 更新**               | GitHub Releases から最新バージョンを自動チェック    |
+| **リポジトリソース**       | **apps.json** を SideStore 等に登録して自動更新可能 |
+| **インストーラー連携**     | **SideStore / AltStore** をアプリ内から直接起動     |
+| **自動ビルド**             | `Info.plist` のバージョン変更時のみ CI ビルド実行   |
+| **IPA ダウンロードページ** | `docs/download.html` で Web からも DL 可能          |
 
 ## 🏗️ アーキテクチャ
 

@@ -106,6 +106,29 @@ struct UpdateView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(updater.isLoading)
                     .padding(.horizontal, 20)
+
+                    // Source Management
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Source Repository")
+                            .font(.headline)
+                            .padding(.horizontal, 4)
+
+                        Text("インストーラーにソースを追加すると、SideStore 等のアプリ一覧に Nezu App が表示され、自動更新が可能になります。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 4)
+
+                        VStack(spacing: 12) {
+                            sourceButton(title: "SideStore に追加", icon: "plus.circle.fill", scheme: "sidestore://source?url=https://nezumi0627.github.io/nezu-app/apps.json")
+                            
+                            sourceButton(title: "AltStore に追加", icon: "plus.circle.fill", scheme: "altstore://source?url=https://nezumi0627.github.io/nezu-app/apps.json")
+                            
+                            sourceButton(title: "LiveContainer に追加", icon: "shippingbox.fill", scheme: "livecontainer://source?url=aHR0cHM6Ly9uZXp1bWkwNjI3LmdpdGh1Yi5pby9uZXp1LWFwcC9hcHBzLmpzb24=")
+                        }
+                    }
+                    .padding(20)
+                    .glassEffect(in: .rect(cornerRadius: 16))
+                    .padding(.horizontal, 20)
                     .padding(.bottom, 40)
                 }
             }
@@ -114,6 +137,29 @@ struct UpdateView: View {
         .onAppear {
             updater.checkForUpdates()
         }
+    }
+
+    @ViewBuilder
+    private func sourceButton(title: String, icon: String, scheme: String) -> some View {
+        Button {
+            if let url = URL(string: scheme) {
+                UIApplication.shared.open(url)
+            }
+        } label: {
+            HStack {
+                Label(title, systemImage: icon)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .font(.subheadline.bold())
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .background(Color.primary.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
     }
 }
 

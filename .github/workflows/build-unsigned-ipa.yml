@@ -182,9 +182,9 @@ jobs:
           unzip -l "$IPA_NAME" | grep Payload
 
       # =========================================================
-      # Metadata
+      # Metadata & Repository Update
       # =========================================================
-      - name: Generate metadata
+      - name: Generate metadata & Update Repo
         run: |
           set -e
           IPA="$IPA_NAME"
@@ -197,11 +197,19 @@ jobs:
           echo "IPA_SIZE_HUMAN=$SIZE_HUMAN" >> $GITHUB_ENV
           echo "IPA_SHA256=$SHA256" >> $GITHUB_ENV
 
+          # URL エンコードされた URL も生成 (SideStore 直接リンク用)
+          DIRECT_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}-build${BUILD_NUM}/${IPA_NAME}"
+          ENCODED_URL=$(echo -n "$DIRECT_URL" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
+          echo "ENCODED_URL=$ENCODED_URL" >> $GITHUB_ENV
+
           XCODE_VER=$(xcodebuild -version | head -n1)
           SWIFT_VER=$(swift --version 2>/dev/null | head -n1 || echo "unknown")
           SDK_VER=$(xcodebuild -showsdks 2>/dev/null | grep -i iphoneos | head -n1 | sed 's/.*iphoneos//' || echo "unknown")
 
           git log -10 --pretty=format:'- `%h` %ad **%an**: %s' --date=short > commits.md
+
+          # リポジトリ JSON を更新
+          python3 scripts/update_apps_json.py "$VERSION" "$BUILD_NUM" "$DIRECT_URL" "$SIZE_BYTES" "$SHA256"
 
           cat > release-body.md <<EOF
           ## Nezu App v${VERSION} (Build ${BUILD_NUM})
@@ -215,31 +223,37 @@ jobs:
           - **IPA Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
           - **IPA SHA256**: \`$SHA256\`
 
+          ### 📲 インストール (Source Repository)
+
+          > [!IMPORTANT]
+          > このアプリを常に最新の状態に保つには、以下のソースを **SideStore** または **AltStore** に追加することをお勧めします。
+
+          **Source URL:**
+          \`\`\`text
+          https://nezumi0627.github.io/nezu-app/apps.json
+          \`\`\`
+
+          ### 🏗️ 手動インストール (Copy & Paste)
+
+          > [!NOTE]
+          > 特別にこのバージョンのみをインストールしたい場合は、以下のURLをコピーしてブラウザ等で開いてください。
+
+          **SideStore 用:**
+          \`\`\`text
+          sidestore://install?url=$ENCODED_URL
+          \`\`\`
+
           ### Build Environment
 
           - **Xcode Version**: $XCODE_VER
           - **iOS SDK Version**: $SDK_VER
           - **Swift Version**: $SWIFT_VER
-          - **Runner OS**: $RUNNER_OS ($RUNNER_ARCH)
 
           ### Commits included in this build (latest 10)
 
           $(cat commits.md)
 
-          ### 📲 インストール (One-click Install)
-
-          > [!TIP]
-          > SideStore または AltStore がインストールされている場合、以下のリンクから直接インストールを開始できます。
-
-          - [🚀 SideStore でインストール](sidestore://install?url=https://github.com/nezumi0627/nezu-app/releases/download/v${VERSION}-build${BUILD_NUM}/${IPA_NAME})
-          - [🚀 AltStore でインストール](altstore://install?url=https://github.com/nezumi0627/nezu-app/releases/download/v${VERSION}-build${BUILD_NUM}/${IPA_NAME})
-
-          ### 🏗️ 手動インストール
-
-          1. 下の Assets から `.ipa` ファイルをダウンロード
-          2. SideStore 等で署名してインストール
-
-          **注意**: このIPAは署名無しです。
+          **注意**: このIPAは署名無しです。公開リリース後に有効になります。
           EOF
 
           cat > build-metadata.json <<EOF
@@ -257,6 +271,14 @@ jobs:
             "sdk": "$SDK_VER"
           }
           EOF
+
+      - name: Push Repository Changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/apps.json
+          git commit -m "docs: update repository source for v${VERSION} (Build ${BUILD_NUM})"
+          git push origin main
 
       # =========================================================
       # Upload Artifacts

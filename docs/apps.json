@@ -1,0 +1,16 @@
+{
+  "name": "Nezu Repository",
+  "identifier": "com.nezumi0627.nezu-app.source",
+  "sourceURL": "https://nezumi0627.github.io/nezu-app/apps.json",
+  "apps": [
+    {
+      "name": "Nezu App",
+      "bundleIdentifier": "com.example.nezu-app",
+      "developerName": "nezumi0627",
+      "subtitle": "iOS 26 Liquid Glass Demo",
+      "localizedDescription": "GitHub Actions で自動ビルドされた iOS 26 Liquid Glass デザインのデモアプリです。SideStore/AltStore リポジトリ経由で常に最新版を保てます。",
+      "iconURL": "https://github.com/nezumi0627.png",
+      "versions": []
+    }
+  ]
+}
