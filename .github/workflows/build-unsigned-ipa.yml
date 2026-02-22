@@ -5,6 +5,7 @@ on:
     branches: [main, master]
     paths:
       - "test-app/**"
+      - ".github/workflows/build-unsigned-ipa.yml"
   workflow_dispatch:
 
 permissions:
@@ -30,11 +31,11 @@ jobs:
         id: check
         run: |
           set -e
-          PLIST="test-app/nezu-app/Info.plist"
+          V_CONFIG="test-app/Version.xcconfig"
 
           # 現在のバージョンを取得
-          CURRENT_VERSION=$(grep -A1 'CFBundleShortVersionString' "$PLIST" | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
-          CURRENT_BUILD=$(grep -A1 'CFBundleVersion' "$PLIST" | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+          CURRENT_VERSION=$(grep 'MARKETING_VERSION' "$V_CONFIG" | cut -d'=' -f2 | xargs)
+          CURRENT_BUILD=$(grep 'CURRENT_PROJECT_VERSION' "$V_CONFIG" | cut -d'=' -f2 | xargs)
 
           echo "Current version: $CURRENT_VERSION (build $CURRENT_BUILD)"
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
@@ -48,9 +49,9 @@ jobs:
           fi
 
           # 前回のコミットのバージョンを取得
-          if git show HEAD~1:"$PLIST" > /dev/null 2>&1; then
-            PREV_VERSION=$(git show HEAD~1:"$PLIST" | grep -A1 'CFBundleShortVersionString' | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
-            PREV_BUILD=$(git show HEAD~1:"$PLIST" | grep -A1 'CFBundleVersion' | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+          if git show HEAD~1:"$V_CONFIG" > /dev/null 2>&1; then
+            PREV_VERSION=$(git show HEAD~1:"$V_CONFIG" | grep 'MARKETING_VERSION' | cut -d'=' -f2 | xargs)
+            PREV_BUILD=$(git show HEAD~1:"$V_CONFIG" | grep 'CURRENT_PROJECT_VERSION' | cut -d'=' -f2 | xargs)
             echo "Previous version: $PREV_VERSION (build $PREV_BUILD)"
 
             if [ "$CURRENT_VERSION" != "$PREV_VERSION" ] || [ "$CURRENT_BUILD" != "$PREV_BUILD" ]; then
@@ -61,7 +62,7 @@ jobs:
               echo "should_build=false" >> $GITHUB_OUTPUT
             fi
           else
-            echo "No previous commit for Info.plist — building"
+            echo "No previous commit for Version.xcconfig — building"
             echo "should_build=true" >> $GITHUB_OUTPUT
           fi
 
@@ -211,55 +212,56 @@ jobs:
           # リポジトリ JSON を更新
           python3 scripts/update_apps_json.py "$VERSION" "$BUILD_NUM" "$DIRECT_URL" "$SIZE_BYTES" "$SHA256"
 
+          # リリース本文の作成 (バックティックをエスケープして確実に表示させる)
           cat > release-body.md <<EOF
-          ## Nezu App v${VERSION} (Build ${BUILD_NUM})
+## Nezu App v${VERSION} (Build ${BUILD_NUM})
 
-          - **Version**: \`${VERSION}\`
-          - **Build**: \`${BUILD_NUM}\`
-          - **Commit**: \`${{ github.sha }}\`
-          - **Branch**: \`${{ github.ref_name }}\`
-          - **Run**: #${{ github.run_number }}
-          - **IPA File**: \`$IPA_NAME\`
-          - **IPA Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
-          - **IPA SHA256**: \`$SHA256\`
+- **Version**: \`${VERSION}\`
+- **Build**: \`${BUILD_NUM}\`
+- **Commit**: \`${{ github.sha }}\`
+- **Branch**: \`${{ github.ref_name }}\`
+- **Run**: #${{ github.run_number }}
+- **IPA File**: \`$IPA_NAME\`
+- **IPA Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
+- **IPA SHA256**: \`$SHA256\`
 
-          ### 📲 インストール (Source Repository)
+### 📲 インストール (Source Repository)
 
-          > [!IMPORTANT]
-          > このアプリを常に最新の状態に保つには、以下のソースをインストーラーに追加することをお勧めします。
+> [!IMPORTANT]
+> このアプリを常に最新の状態に保つには、以下のソースをインストーラーに追加することをお勧めします。
 
-          **SideStore / AltStore 用:**
-          ```text
-          https://nezumi0627.github.io/nezu-app/apps.json
-          ```
+**SideStore / AltStore 用:**
+\`\`\`text
+https://nezumi0627.github.io/nezu-app/apps.json
+\`\`\`
 
-          **LiveContainer 用:**
-          ```text
-          livecontainer://source?url=aHR0cHM6Ly9uZXp1bWkwNjI3LmdpdGh1Yi5pby9uZXp1LWFwcC9hcHBzLmpzb24=
-          ```
+**LiveContainer 用:**
+\`\`\`text
+livecontainer://source?url=aHR0cHM6Ly9uZXp1bWkwNjI3LmdpdGh1Yi5pby9uZXp1LWFwcC9hcHBzLmpzb24=
+\`\`\`
 
-          ### 🏗️ 手動インストール (Copy & Paste)
+### 🏗️ 手動インストール (Copy & Paste)
 
-          > [!NOTE]
-          > 特別にこのバージョンのみをインストールしたい場合は、以下のURLをコピーしてブラウザ等で開いてください。
+> [!NOTE]
+> 特別にこのバージョンのみをインストールしたい場合は、以下のURLをコピーしてブラウザ等で開いてください。
 
-          **SideStore 用:**
-          ```text
-          sidestore://install?url=$ENCODED_URL
-          ```
+**SideStore 用:**
+\`\`\`text
+sidestore://install?url=$ENCODED_URL
+\`\`\`
 
-          ### Build Environment
+### Build Environment
 
-          - **Xcode Version**: $XCODE_VER
-          - **iOS SDK Version**: $SDK_VER
-          - **Swift Version**: $SWIFT_VER
+- **Xcode Version**: $XCODE_VER
+- **iOS SDK Version**: $SDK_VER
+- **Swift Version**: $SWIFT_VER
 
-          ### Commits included in this build (latest 10)
+### Commits included in this build (latest 10)
 
-          $(cat commits.md)
+$(cat commits.md)
 
-          **注意**: このIPAは署名無しです。公開リリース後に有効になります。
-          EOF
+**注意**: このIPAは署名無しです。公開リリース後に有効になります。
+EOF
 
           cat > build-metadata.json <<EOF
           {
@@ -282,8 +284,8 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add docs/apps.json
-          git commit -m "docs: update repository source for v${VERSION} (Build ${BUILD_NUM})"
-          git push origin main
+          git commit -m "docs: update repository source for v${VERSION} (Build ${BUILD_NUM})" || echo "No changes to commit"
+          git push origin main || echo "No changes to push"
 
       # =========================================================
       # Upload Artifacts
@@ -337,5 +339,5 @@ jobs:
             echo "# ⏭️ Build Skipped"
             echo ""
             echo "Version unchanged (v${{ needs.check-version.outputs.version }}, build ${{ needs.check-version.outputs.build_number }})."
-            echo "Update \`CFBundleShortVersionString\` or \`CFBundleVersion\` in \`Info.plist\` to trigger a new build."
+            echo "Update \`Version.xcconfig\` in \`test-app/\` to trigger a new build."
           } >> $GITHUB_STEP_SUMMARY
