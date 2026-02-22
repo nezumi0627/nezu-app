@@ -87,10 +87,28 @@ class VersionManager: ObservableObject {
 
     func downloadIPA() {
         guard let url = downloadURL else { return }
+        let urlString = url.absoluteString
+        
+        // URL エンコード（SideStore/AltStore の仕様）
+        guard let encodedURL = urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            UIApplication.shared.open(url)
+            return
+        }
+
         #if os(iOS)
-        UIApplication.shared.open(url)
+        let sidestore = URL(string: "sidestore://install?url=\(encodedURL)")!
+        let altstore = URL(string: "altstore://install?url=\(encodedURL)")!
+
+        if UIApplication.shared.canOpenURL(sidestore) {
+            UIApplication.shared.open(sidestore)
+        } else if UIApplication.shared.canOpenURL(altstore) {
+            UIApplication.shared.open(altstore)
+        } else {
+            // どちらもなければブラウザで開く（通常の挙動）
+            UIApplication.shared.open(url)
+        }
         #else
-        print("Download URL: \(url)")
+        print("Install URL: sidestore://install?url=\(encodedURL)")
         #endif
     }
 
