@@ -10,7 +10,17 @@
       "subtitle": "iOS 26 Liquid Glass Demo",
       "localizedDescription": "GitHub Actions で自動ビルドされた iOS 26 Liquid Glass デザインのデモアプリです。SideStore/AltStore リポジトリ経由で常に最新版を保てます。",
       "iconURL": "https://github.com/nezumi0627.png",
-      "versions": []
+      "versions": [
+        {
+          "version": "2.0.0",
+          "build": 10,
+          "date": "2026-02-22",
+          "downloadURL": "https://github.com/nezumi0627/nezu-app/releases/download/v2.0.0-build10/nezu-app-v2.0.0-build10-a3b9e75.ipa",
+          "size": 124206,
+          "sha256": "b70fe75681c8f81cb45f1d9ceba3ac15d543feb5f2d6ca99a6ee35005db9c742",
+          "localizedDescription": "Build 10 - 自動ビルドによる更新"
+        }
+      ]
     }
   ]
 }
