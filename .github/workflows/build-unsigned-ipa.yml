@@ -89,7 +89,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: "26.1"
+          xcode-version: latest
 
       - name: Xcode info
         run: |
@@ -115,21 +115,21 @@ jobs:
           set -euxo pipefail
           cd test-app
 
+          # Detect Project or Workspace dynamically
           if ls *.xcworkspace >/dev/null 2>&1; then
-            TARGET_FILE=$(ls *.xcworkspace | head -n1)
-            SCHEME=$(xcodebuild -list -workspace "$TARGET_FILE" | awk '/Schemes:/ {getline; gsub(/^[ \t]+|[ \t]+$/, ""); print}')
-            TARGET_ARGS=(-workspace "$TARGET_FILE")
+            TARGET=$(ls -d *.xcworkspace | head -n1)
+            SCHEME=$(xcodebuild -list -workspace "$TARGET" | awk '/Schemes:/ {getline; gsub(/^[ \t]+|[ \t]+$/, ""); print}')
+            ARGS=(-workspace "$TARGET" -scheme "$SCHEME")
           else
-            TARGET_FILE="nezu-app.xcodeproj"
-            SCHEME=$(xcodebuild -list -project "$TARGET_FILE" | awk '/Schemes:/ {getline; gsub(/^[ \t]+|[ \t]+$/, ""); print}')
-            TARGET_ARGS=(-project "$TARGET_FILE")
+            TARGET=$(ls -d *.xcodeproj | head -n1)
+            SCHEME=$(xcodebuild -list -project "$TARGET" | awk '/Schemes:/ {getline; gsub(/^[ \t]+|[ \t]+$/, ""); print}')
+            ARGS=(-project "$TARGET" -scheme "$SCHEME")
           fi
 
-          echo "Scheme: $SCHEME"
+          echo "Building $TARGET with scheme $SCHEME"
 
           xcodebuild \
-            "${TARGET_ARGS[@]}" \
-            -scheme "$SCHEME" \
+            "${ARGS[@]}" \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath ../DerivedData \
@@ -148,6 +148,10 @@ jobs:
         run: |
           set -e
           APP_PATH=$(find DerivedData -name "*.app" | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: .app not found in DerivedData"
+            exit 1
+          fi
           echo "APP_PATH=$APP_PATH" >> $GITHUB_OUTPUT
           echo "Found app: $APP_PATH"
 
@@ -160,19 +164,19 @@ jobs:
           set -e
           APP_PATH="${{ steps.find_app.outputs.APP_PATH }}"
           APP_NAME=$(basename "$APP_PATH" .app)
-          VERSION="${{ needs.check-version.outputs.version }}"
-          BUILD_NUM="${{ needs.check-version.outputs.build_number }}"
+          V="${{ needs.check-version.outputs.version }}"
+          B="${{ needs.check-version.outputs.build_number }}"
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
 
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
 
-          IPA_NAME="${APP_NAME}-v${VERSION}-build${BUILD_NUM}-${SHORT_SHA}.ipa"
+          IPA_NAME="${APP_NAME}-v${V}-build${B}-${SHORT_SHA}.ipa"
 
           zip -qr "$IPA_NAME" Payload
           echo "IPA_NAME=$IPA_NAME" >> $GITHUB_ENV
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "BUILD_NUM=$BUILD_NUM" >> $GITHUB_ENV
+          echo "VERSION=$V" >> $GITHUB_ENV
+          echo "BUILD_NUM=$B" >> $GITHUB_ENV
           echo "Created $IPA_NAME"
 
       # =========================================================
@@ -189,19 +193,16 @@ jobs:
         run: |
           set -e
           IPA="$IPA_NAME"
+          V="$VERSION"
+          B="$BUILD_NUM"
 
           SIZE_BYTES=$(stat -f%z "$IPA")
           SIZE_HUMAN=$(du -h "$IPA" | cut -f1)
           SHA256=$(shasum -a 256 "$IPA" | awk '{print $1}')
 
-          echo "IPA_SIZE_BYTES=$SIZE_BYTES" >> $GITHUB_ENV
-          echo "IPA_SIZE_HUMAN=$SIZE_HUMAN" >> $GITHUB_ENV
-          echo "IPA_SHA256=$SHA256" >> $GITHUB_ENV
-
           # URL エンコードされた URL も生成 (SideStore 直接リンク用)
-          DIRECT_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}-build${BUILD_NUM}/${IPA_NAME}"
+          DIRECT_URL="https://github.com/${{ github.repository }}/releases/download/v${V}-build${B}/${IPA_NAME}"
           ENCODED_URL=$(echo -n "$DIRECT_URL" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
-          echo "ENCODED_URL=$ENCODED_URL" >> $GITHUB_ENV
 
           XCODE_VER=$(xcodebuild -version | head -n1)
           SWIFT_VER=$(swift --version 2>/dev/null | head -n1 || echo "unknown")
@@ -210,81 +211,82 @@ jobs:
           git log -10 --pretty=format:'- `%h` %ad **%an**: %s' --date=short > commits.md
 
           # リポジトリ JSON を更新
-          python3 scripts/update_apps_json.py "$VERSION" "$BUILD_NUM" "$DIRECT_URL" "$SIZE_BYTES" "$SHA256"
+          python3 scripts/update_apps_json.py "$V" "$B" "$DIRECT_URL" "$SIZE_BYTES" "$SHA256"
 
-          # リリース本文の作成 (バックティックをエスケープして確実に表示させる)
-          cat > release-body.md <<EOF
-          ## Nezu App v${VERSION} (Build ${BUILD_NUM})
+          # リリース本文の作成 (ヒアドキュメントのインデントに注意)
+          cat <<EOF > release-body.md
+## Nezu App v${V} (Build ${B})
 
-          - **Version**: \`${VERSION}\`
-          - **Build**: \`${BUILD_NUM}\`
-          - **Commit**: \`${{ github.sha }}\`
-          - **Branch**: \`${{ github.ref_name }}\`
-          - **Run**: #${{ github.run_number }}
-          - **IPA File**: \`$IPA_NAME\`
-          - **IPA Size**: $SIZE_HUMAN ($SIZE_BYTES bytes)
-          - **IPA SHA256**: \`$SHA256\`
+- **Version**: \`${V}\`
+- **Build**: \`${B}\`
+- **Commit**: \`${GITHUB_SHA}\`
+- **Branch**: \`${GITHUB_REF_NAME}\`
+- **Run**: #${GITHUB_RUN_NUMBER}
+- **IPA File**: \`${IPA}\`
+- **IPA Size**: ${SIZE_HUMAN} (${SIZE_BYTES} bytes)
+- **IPA SHA256**: \`${SHA256}\`
 
-          ### 📲 インストール (Source Repository)
+### 📲 インストール (Source Repository)
 
-          > [!IMPORTANT]
-          > このアプリを常に最新の状態に保つには、以下のソースをインストーラーに追加することをお勧めします。
+> [!IMPORTANT]
+> このアプリを常に最新の状態にポータルに保つには、以下のソースをインストーラーに追加することをお勧めします。
 
-          **SideStore / AltStore 用:**
-          \`\`\`text
-          https://nezumi0627.github.io/nezu-app/apps.json
-          \`\`\`
+**SideStore / AltStore 用:**
+\`\`\`text
+https://nezumi0627.github.io/nezu-app/apps.json
+\`\`\`
 
-          **LiveContainer 用:**
-          \`\`\`text
-          livecontainer://source?url=aHR0cHM6Ly9uZXp1bWkwNjI3LmdpdGh1Yi5pby9uZXp1LWFwcC9hcHBzLmpzb24=
-          \`\`\`
+**LiveContainer 用:**
+\`\`\`text
+livecontainer://source?url=aHR0cHM6Ly9uZXp1bWkwNjI3LmdpdGh1Yi5pby9uZXp1LWFwcC9hcHBzLmpzb24=
+\`\`\`
 
-          ### 🏗️ 手動インストール (Copy & Paste)
+### 🏗️ 手動インストール (Copy & Paste)
 
-          > [!NOTE]
-          > 特別にこのバージョンのみをインストールしたい場合は、以下のURLをコピーしてブラウザ等で開いてください。
+> [!NOTE]
+> 特別にこのバージョンのみをインストールしたい場合は、以下のURLをコピーしてブラウザ等で開いてください。
 
-          **SideStore 用:**
-          \`\`\`text
-          sidestore://install?url=$ENCODED_URL
-          \`\`\`
+**SideStore 用:**
+\`\`\`text
+sidestore://install?url=${ENCODED_URL}
+\`\`\`
 
-          ### Build Environment
+### Build Environment
 
-          - **Xcode Version**: $XCODE_VER
-          - **iOS SDK Version**: $SDK_VER
-          - **Swift Version**: $SWIFT_VER
+- **Xcode Version**: ${XCODE_VER}
+- **iOS SDK Version**: ${SDK_VER}
+- **Swift Version**: ${SWIFT_VER}
 
-          ### Commits included in this build (latest 10)
+### Commits included in this build (latest 10)
 
-          $(cat commits.md)
+$(cat commits.md)
 
-          **注意**: このIPAは署名無しです。公開リリース後に有効になります。
-          EOF
+**注意**: このIPAは署名無しです。公開リリース後に有効になります。
+EOF
 
-          cat > build-metadata.json <<EOF
+          # JSON メタデータの作成
+          cat <<EOF > build-metadata.json
           {
-            "version": "$VERSION",
-            "build": "$BUILD_NUM",
-            "ipa": "$IPA_NAME",
+            "version": "$V",
+            "build": "$B",
+            "ipa": "$IPA",
             "size_bytes": $SIZE_BYTES,
             "sha256": "$SHA256",
-            "commit": "${{ github.sha }}",
-            "branch": "${{ github.ref_name }}",
-            "run": ${{ github.run_number }},
+            "commit": "${GITHUB_SHA}",
+            "branch": "${GITHUB_REF_NAME}",
+            "run": ${GITHUB_RUN_NUMBER},
             "xcode": "$XCODE_VER",
             "swift": "$SWIFT_VER",
             "sdk": "$SDK_VER"
           }
-          EOF
+EOF
 
       - name: Push Repository Changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add docs/apps.json
-          git commit -m "docs: update repository source for v${VERSION} (Build ${BUILD_NUM})" || echo "No changes to commit"
+          git commit -m "docs: update repository source for v${{ needs.check-version.outputs.version }} (Build ${{ needs.check-version.outputs.build_number }})" || echo "No changes to commit"
           git push origin main || echo "No changes to push"
 
       # =========================================================
@@ -321,8 +323,7 @@ jobs:
             echo ""
             echo "- **Version:** v${VERSION} (Build ${BUILD_NUM})"
             echo "- **IPA:** \`$IPA_NAME\`"
-            echo "- **Size:** $IPA_SIZE_HUMAN"
-            echo "- **SHA256:** \`$IPA_SHA256\`"
+            echo "- **SHA256:** \`$SHA256\`"
           } >> $GITHUB_STEP_SUMMARY
 
   # ===========================================================
