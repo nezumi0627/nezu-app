@@ -13,6 +13,15 @@
       "versions": [
         {
           "version": "2.0.0",
+          "build": 14,
+          "date": "2026-02-22",
+          "downloadURL": "https://github.com/nezumi0627/nezu-app/releases/download/v2.0.0-build14/nezu-app-v2.0.0-build14-f39108d.ipa",
+          "size": 121915,
+          "sha256": "e17a43ec0fb1c73fb3f6c1f0e318d06a20a60f5e011aab0fd1a4a92185d60921",
+          "localizedDescription": "Build 14 - 自動ビルドによる更新"
+        },
+        {
+          "version": "2.0.0",
           "build": 11,
           "date": "2026-02-22",
           "downloadURL": "https://github.com/nezumi0627/nezu-app/releases/download/v2.0.0-build11/nezu-app-v2.0.0-build11-ac3bb10.ipa",
