@@ -101,8 +101,7 @@ struct LinkRow: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
-                .glassEffect(in: .rect(cornerRadius: 14))
-                    .interactive()
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
             }
             .buttonStyle(.plain)
         }

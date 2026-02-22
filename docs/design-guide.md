@@ -13,22 +13,22 @@ Nezu App は iOS 26 で導入された **Liquid Glass** デザインシステム
 ```swift
 // 基本形 — 角丸のガラス効果
 VStack { ... }
-    .glassEffect(shape: .rect(cornerRadius: 16))
+    .glassEffect(in: .rect(cornerRadius: 16))
 
 // カプセル形状
 Text("タグ")
     .padding(.horizontal, 12)
     .padding(.vertical, 6)
-    .glassEffect(shape: .capsule)
+    .glassEffect(in: .capsule)
 
 // 円形
 Image(systemName: "app.fill")
     .frame(width: 80, height: 80)
-    .glassEffect(shape: .circle)
+    .glassEffect(in: .circle)
 
 // インタラクティブ — タッチに反応
 Link("リンク") { }
-    .glassEffect(shape: .rect(cornerRadius: 14), interactive: true)
+    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
 ```
 
 ### バリエーション

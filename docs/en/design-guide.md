@@ -13,22 +13,22 @@ The primary SwiftUI modifier for applying glass effects. Creates a translucent a
 ```swift
 // Basic — rounded rectangle glass
 VStack { ... }
-    .glassEffect(shape: .rect(cornerRadius: 16))
+    .glassEffect(in: .rect(cornerRadius: 16))
 
 // Capsule shape
 Text("Tag")
     .padding(.horizontal, 12)
     .padding(.vertical, 6)
-    .glassEffect(shape: .capsule)
+    .glassEffect(in: .capsule)
 
 // Circle
 Image(systemName: "app.fill")
     .frame(width: 80, height: 80)
-    .glassEffect(shape: .circle)
+    .glassEffect(in: .circle)
 
 // Interactive — responds to touch
 Link("Link") { }
-    .glassEffect(shape: .rect(cornerRadius: 14), interactive: true)
+    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
 ```
 
 ### Variants
